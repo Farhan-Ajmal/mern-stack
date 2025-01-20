@@ -37,6 +37,10 @@ export const subscribeUser = async (req, res) => {
       ],
       success_url: `http://localhost:5000/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `http://localhost:5000/cancel`,
+      customer_email: "raccoonfarhan0349@gmail.com",
+      metadata: {
+        userId: "userId", // Store the logged-in user's ID
+      },
     });
     res.status(200).json({ success: true, url: session.url }); // Send the Stripe Checkout URL as a response
   } catch (error) {
