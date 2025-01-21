@@ -24,8 +24,6 @@ import { useState } from "react";
 // import { CheckIcon } from "@chakra-ui/icons";
 
 const ProductCard = ({ product }) => {
-  console.log("product", product);
-
   const [updatedProduct, setUpdatedProduct] = useState(product);
 
   const textColor = useColorModeValue("gray.600", "gray.200");

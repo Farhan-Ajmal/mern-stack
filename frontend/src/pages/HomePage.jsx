@@ -7,12 +7,10 @@ import { useProductStore } from "../store/product.js";
 
 const HomePage = () => {
   const { fetchProducts, products } = useProductStore();
-  console.log("fetchProducts", fetchProducts);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
-  console.log("products", products);
 
   return (
     <Container maxW="container.xl" py={12}>
