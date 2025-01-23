@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 
 const stripe = new Stripe(
-  "sk_test_51Otnl4DPA0JjYlhgNqTQRCW2NiDMP5chcNp8lURw0NapSlEyYA2PGO5TUkwrWsy2qqvp0qVHnmmt2Nie6NEUd1Aw00VeWD2cYi"
+  "sk_test_51QkKNSFRpxCUo2PABo52EiZ1cCFV3wl5JZLRqnbqfGJOrfMi4KZ21ijcQpWbrsxM3aKSwxHOz3elWWMRVjijsMdb00IUrffgj2"
 );
 
 export const subscribeUser = async (req, res) => {
@@ -15,7 +15,7 @@ export const subscribeUser = async (req, res) => {
 
   switch (plan.toLowerCase()) {
     case "starter":
-      priceId = "price_1P9TVmDPA0JjYlhg79nAtNeG"; // Replace with your actual Stripe Price ID for the Starter plan
+      priceId = "price_1QkKUWFRpxCUo2PA0IBMb8Tk"; // Replace with your actual Stripe Price ID for the Starter plan
       break;
 
     case "pro":
@@ -37,9 +37,9 @@ export const subscribeUser = async (req, res) => {
       ],
       success_url: `http://localhost:5000/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `http://localhost:5000/cancel`,
-      customer_email: "raccoonfarhan0349@gmail.com",
+      customer_email: "dedara@mailinator.com",
       metadata: {
-        userId: "userId", // Store the logged-in user's ID
+        userId: "userId2", // Store the logged-in user's ID
       },
     });
     res.status(200).json({ success: true, url: session.url }); // Send the Stripe Checkout URL as a response
