@@ -6,8 +6,8 @@ const stripe = new Stripe(
   "sk_test_51QkKNSFRpxCUo2PABo52EiZ1cCFV3wl5JZLRqnbqfGJOrfMi4KZ21ijcQpWbrsxM3aKSwxHOz3elWWMRVjijsMdb00IUrffgj2"
 );
 
-const MAX_RETRIES = 5; // Maximum number of retries
-const RETRY_DELAY = 1000; // Delay between retries in milliseconds
+// const MAX_RETRIES = 5; // Maximum number of retries
+// const RETRY_DELAY = 1000; // Delay between retries in milliseconds
 
 // const addSubscriptionToCustomer = async (stripeId, subscriptionData) => {
 //   let retries = 0;
@@ -86,6 +86,7 @@ export const handleCustomerSubscriptionUpdated = async (
   try {
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
+    console.log("updatedSubscriptionData", updatedSubscriptionData);
 
     if (!customer) {
       console.log(`Customer not found for stripeId ${stripeId}. Retrying...`);
@@ -96,7 +97,7 @@ export const handleCustomerSubscriptionUpdated = async (
 
     // Find the existing subscription by subscriptionId
     const existingSubscriptionIndex = customer.subscriptions.findIndex(
-      (sub) => sub.subscriptionId === updatedSubscriptionData.id
+      (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
     );
 
     if (existingSubscriptionIndex !== -1) {
@@ -198,17 +199,22 @@ export const getRealtimeData = async (request, response) => {
       console.log("subscriptionData.customer", subscription.customer);
       const stripeId = subscription.customer;
       status = subscription.status;
+      const testingSec = 1737699399;
+      const secToms = testingSec * 1000;
+      const conToDate = new Date(secToms);
+      console.log("conToDate", conToDate);
+
       const dummySubscriptionData1 = {
         subscriptionId: subscription.id,
-        cancel_at: subscription.cancel_at,
-        // items: subscription.items.data.map((item) => ({
+        cancel_at: new Date(subscription.cancel_at * 1000),
         cancel_at_period_end: subscription.cancel_at_period_end,
-        canceled_at: subscription.canceled_at,
+        canceled_at: new Date(subscription.canceled_at * 1000),
         created: subscription.created,
-        current_period_end: subscription.current_period_end,
-        current_period_start: subscription.current_period_start,
+        current_period_end: new Date(subscription.current_period_end * 1000),
+        current_period_start: new Date(
+          subscription.current_period_start * 1000
+        ),
         ended_at: subscription.ended_at,
-        // })),
       };
       console.log("subscription.id", subscription.id);
       console.log("subscription.cancel_at", subscription.cancel_at);
@@ -237,16 +243,19 @@ export const getRealtimeData = async (request, response) => {
       status = subscription.status;
       const updateSubscriptionData = {
         subscriptionId: subscription.id,
-        cancel_at: subscription.cancel_at,
-        // items: subscription.items.data.map((item) => ({
+        cancel_at: new Date(subscription.cancel_at * 1000),
         cancel_at_period_end: subscription.cancel_at_period_end,
-        canceled_at: subscription.canceled_at,
+        canceled_at: new Date(subscription.canceled_at * 1000),
         created: subscription.created,
-        current_period_end: subscription.current_period_end,
-        current_period_start: subscription.current_period_start,
+        current_period_end: new Date(subscription.current_period_end * 1000),
+        current_period_start: new Date(
+          subscription.current_period_start * 1000
+        ),
         ended_at: subscription.ended_at,
-        // })),
       };
+
+      console.log("updatedSubscriptionData1234567890", updateSubscriptionData);
+
       await handleCustomerSubscriptionUpdated(
         subscription.customer,
         updateSubscriptionData
@@ -256,8 +265,10 @@ export const getRealtimeData = async (request, response) => {
 
     case "invoice.payment_succeeded":
       const invoice = event.data.object;
+       const invoiceData = JSON.stringify(event.data.object, null, 2);
       console.log(`Invoice payment succeeded for invoice: ${invoice.id}`);
-      console.log(`invoice data: ${invoice}`);
+      console.log(`invoice: ${invoice}`);
+      console.log(`invoice data: ${invoiceData}`);
       // console.log(
       //   `Formatted Invoice payment data: ${JSON.stringify(invoice, null, 2)}`
       // );

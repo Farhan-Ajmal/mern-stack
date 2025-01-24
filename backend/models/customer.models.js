@@ -6,14 +6,14 @@ const subscriptionSchema = new mongoose.Schema(
     // planId: { type: String, required: true }, // Plan ID or name
     // startDate: { type: Date, required: true }, // Subscription start date
     // endDate: { type: Date }, // Subscription end date (if applicable)
-    cancel_at: { type: Date }, // Subscription status (e.g., active, canceled)
+    cancel_at: { type: Date, default: null }, // Subscription status (e.g., active, canceled)
 
     cancel_at_period_end: { type: Boolean, required: true }, // Unique identifier for each subscription
-    canceled_at: { type: Date }, // Unique identifier for each subscription
+    canceled_at: { type: Date, default: null }, // Unique identifier for each subscription
     created: { type: Date, required: true }, // Subscription status (e.g., active, canceled)
     current_period_end: { type: Date, required: true }, // Subscription status (e.g., active, canceled)
     current_period_start: { type: Date, required: true }, // Subscription status (e.g., active, canceled)
-    ended_at: { type: Date }, // Subscription status (e.g., active, canceled)
+    ended_at: { type: Date, default: null }, // Subscription status (e.g., active, canceled)
   },
   { _id: false } // Prevent automatic creation of _id for nested subscription objects
 );
