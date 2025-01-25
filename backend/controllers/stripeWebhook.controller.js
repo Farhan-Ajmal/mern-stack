@@ -6,46 +6,18 @@ const stripe = new Stripe(
   "sk_test_51QkKNSFRpxCUo2PABo52EiZ1cCFV3wl5JZLRqnbqfGJOrfMi4KZ21ijcQpWbrsxM3aKSwxHOz3elWWMRVjijsMdb00IUrffgj2"
 );
 
-// const MAX_RETRIES = 5; // Maximum number of retries
-// const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-
-// const addSubscriptionToCustomer = async (stripeId, subscriptionData) => {
-//   let retries = 0;
-
-//   while (retries < MAX_RETRIES) {
-//     try {
-//       const customer = await Customer.findOne({ stripeId });
-
-//       if (customer) {
-//         customer.subscriptions.push(subscriptionData); // Add subscription to the array
-//         await customer.save(); // Save the updated customer
-//         console.log("Subscription added successfully to customer:", stripeId);
-//         return;
-//       } else {
-//         console.log(
-//           `Customer with stripeId ${stripeId} not found. Retrying...`
-//         );
-//         retries++;
-//         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
-//       }
-//     } catch (error) {
-//       console.error("Error adding subscription to customer:", error.message);
-//       throw error;
-//     }
-//   }
-
-//   console.error(
-//     `Failed to find customer with stripeId ${stripeId} after ${MAX_RETRIES} retries.`
-//   );
-// };
-
 const pendingSubscriptions = new Map(); // Store pending subscription events
+const pendingSubscriptions2 = new Map(); // Store pending subscription events
 
 // Retry pending subscriptions periodically
 setInterval(async () => {
   for (const [stripeId, dummySubscriptionData] of pendingSubscriptions) {
     console.log(`Retrying subscription update for stripeId: ${stripeId}`);
     await handleCustomerSubscriptionUpdated(stripeId, dummySubscriptionData);
+  }
+  for (const [stripeId, dummySubscriptionData] of pendingSubscriptions2) {
+    console.log(`Retrying invoice update for stripeId: ${stripeId}`);
+    await handleInvoice(stripeId, dummySubscriptionData);
   }
 }, 10000); // Retry every 10 seconds
 
@@ -125,6 +97,48 @@ export const handleCustomerSubscriptionUpdated = async (
   }
 };
 
+export const handleInvoice = async (stripeId, invoiceData) => {
+  try {
+    // Find the customer in the database by Stripe ID
+    let customer = await Customer.findOne({ stripeId });
+    console.log("invoiceData", invoiceData);
+
+    if (!customer) {
+      console.log(`invoice not found for stripeId ${stripeId}. Retrying...`);
+      // Temporarily store the subscription event for retrying later
+      pendingSubscriptions2.set(stripeId, invoiceData);
+      return;
+    }
+
+    // Find the existing subscription by subscriptionId
+    const existingSubscriptionIndex = customer.subscriptions.findIndex(
+      (sub) => sub.subscriptionId === invoiceData.subscription
+    );
+    console.log("existingSubscriptionIndex", existingSubscriptionIndex);
+
+    // if (existingSubscriptionIndex !== -1) {
+      // Update the existing subscription
+      const existingSubscription =
+        customer.subscriptions[existingSubscriptionIndex];
+      console.log("existingSubscription", existingSubscription);
+      console.log("bhag yaha se ", invoiceData);
+
+      // Push the new invoice to the subscription's invoice array
+      // existingSubscription.invoice.push(invoiceData);
+    // }
+    existingSubscription.invoice.push(invoiceData);
+
+    // Save the updated customer document to the database
+    await customer.save();
+    console.log("invoiceData updated successfully.");
+
+    // Remove from pending if it exists
+    // pendingSubscriptions2.delete(stripeId);
+  } catch (error) {
+    console.error("Error handling invoiceData update:", error.message);
+  }
+};
+
 export const handleCheckoutSessionCompleted = async (userId, session) => {
   try {
     const stripeId = session.customer; // Stripe customer ID
@@ -195,14 +209,14 @@ export const getRealtimeData = async (request, response) => {
     case "customer.subscription.created":
       subscription = event.data.object;
       const subscriptionData = JSON.stringify(event.data.object, null, 2);
-      console.log("subscriptionData", subscriptionData);
-      console.log("subscriptionData.customer", subscription.customer);
+      // console.log("subscriptionData", subscriptionData);
+      // console.log("subscriptionData.customer", subscription.customer);
       const stripeId = subscription.customer;
       status = subscription.status;
       const testingSec = 1737699399;
       const secToms = testingSec * 1000;
       const conToDate = new Date(secToms);
-      console.log("conToDate", conToDate);
+      // console.log("conToDate", conToDate);
 
       const dummySubscriptionData1 = {
         subscriptionId: subscription.id,
@@ -216,12 +230,12 @@ export const getRealtimeData = async (request, response) => {
         ),
         ended_at: subscription.ended_at,
       };
-      console.log("subscription.id", subscription.id);
-      console.log("subscription.cancel_at", subscription.cancel_at);
-      console.log(
-        "subscription.cancel_at_period_end",
-        subscription.cancel_at_period_end
-      );
+      // console.log("subscription.id", subscription.id);
+      // console.log("subscription.cancel_at", subscription.cancel_at);
+      // console.log(
+      //   "subscription.cancel_at_period_end",
+      //   subscription.cancel_at_period_end
+      // );
 
       const dummySubscriptionData = {
         subscriptionId: subscription.id,
@@ -229,8 +243,8 @@ export const getRealtimeData = async (request, response) => {
         cancel_at_period_end: subscription.cancel_at_period_end,
       };
 
-      console.log("dummySubscriptionData1", dummySubscriptionData1);
-      console.log("dummySubscriptionData", dummySubscriptionData);
+      // console.log("dummySubscriptionData1", dummySubscriptionData1);
+      // console.log("dummySubscriptionData", dummySubscriptionData);
 
       console.log(`Handling subscription created for customer: ${stripeId}`);
       // await addSubscriptionToCustomer(stripeId, dummySubscriptionData);
@@ -254,7 +268,7 @@ export const getRealtimeData = async (request, response) => {
         ended_at: subscription.ended_at,
       };
 
-      console.log("updatedSubscriptionData1234567890", updateSubscriptionData);
+      // console.log("updatedSubscriptionData1234567890", updateSubscriptionData);
 
       await handleCustomerSubscriptionUpdated(
         subscription.customer,
@@ -265,10 +279,24 @@ export const getRealtimeData = async (request, response) => {
 
     case "invoice.payment_succeeded":
       const invoice = event.data.object;
-       const invoiceData = JSON.stringify(event.data.object, null, 2);
+      const invoiceData1 = JSON.stringify(event.data.object, null, 2);
+      const invoiceData = {
+        invoice_id: invoice.id,
+        amount_due: invoice.amount_due,
+        amount_paid: invoice.amount_paid,
+        currency: invoice.currency,
+        customer: invoice.customer,
+        period: invoice.lines.data[0].period,
+        subscription: invoice.lines.data[0].subscription,
+      };
       console.log(`Invoice payment succeeded for invoice: ${invoice.id}`);
       console.log(`invoice: ${invoice}`);
-      console.log(`invoice data: ${invoiceData}`);
+      console.log(`invoice data: ${invoiceData1}`);
+      console.log(
+        `id: ${invoice.id}, amount_due: ${invoice.amount_due}, amount_paid: ${invoice.amount_paid},currency: ${invoice.currency},customer: ${invoice.customer}`
+      );
+      console.log("qwerty", invoice.lines.data[0]);
+      await handleInvoice(invoice.customer, invoiceData);
       // console.log(
       //   `Formatted Invoice payment data: ${JSON.stringify(invoice, null, 2)}`
       // );
