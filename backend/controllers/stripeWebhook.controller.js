@@ -21,33 +21,102 @@ const stripe = new Stripe(
 //   }
 // }, 10000); // Retry every 10 seconds
 
-export const handleCustomerSubscriptionAdded = async (
-  stripeId,
-  subscription
-) => {
+// export const handleCustomerSubscriptionUpdated = async (
+//   stripeId,
+//   subscription
+// ) => {
+//   try {
+//     let customer = await Customer.findOne({ stripeId });
+
+//     if (!customer) {
+//       // Temporarily store subscription event data for retry
+//       // pendingSubscriptions.set(stripeId, subscription);
+//       console.log(`Customer not found for stripeId ${stripeId}. Retrying...`);
+//       return;
+//     }
+
+//     // Add or update subscription
+//     customer.subscriptions.push(subscription);
+
+//     await customer.save();
+//     console.log("Customer subscription updated successfully.");
+
+//     // Remove from pending if it exists
+//     // pendingSubscriptions.delete(stripeId);
+//   } catch (error) {
+//     console.error(
+//       "Error handling customer subscription updated:",
+//       error.message
+//     );
+//   }
+// };
+
+export const handleInvoice = async (stripeId, invoiceData) => {
   try {
+    if (!stripeId || !invoiceData) {
+      throw new Error("Missing stripeId or invoiceData.");
+    }
+
+    // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
+    console.log("Invoice data received:", invoiceData);
 
     if (!customer) {
-      // Temporarily store subscription event data for retry
-      // pendingSubscriptions.set(stripeId, subscription);
-      console.log(`Customer not found for stripeId ${stripeId}. Retrying...`);
+      console.warn(`Customer not found for stripeId ${stripeId}.`);
       return;
     }
 
-    // Add or update subscription
-    customer.subscriptions.push(subscription);
+    console.log("Customer found:", customer);
 
-    await customer.save();
-    console.log("Customer subscription updated successfully.");
-
-    // Remove from pending if it exists
-    // pendingSubscriptions.delete(stripeId);
-  } catch (error) {
-    console.error(
-      "Error handling customer subscription updated:",
-      error.message
+    // Find the existing subscription by subscriptionId
+    const existingSubscriptionIndex = customer.subscriptions.findIndex(
+      (sub) => sub.subscriptionId === invoiceData.subscription
     );
+    const currentSubscription = customer.subscriptions.find(
+      (sub) => sub.subscriptionId === invoiceData.subscription
+    );
+    console.log("currentSubscription.invoice", currentSubscription.invoice);
+
+    let currentSubscriptionIndex = -1;
+    if (currentSubscription.invoice) {
+      currentSubscriptionIndex = currentSubscription.invoice.findIndex(
+        (invoice) => invoice.invoice_id === invoiceData.invoice_id
+      );
+    }
+
+    console.log("currentSubscription", currentSubscription);
+    console.log("currentSubscriptionIndex", currentSubscriptionIndex);
+
+    console.log(
+      "Existing subscription index invoice:",
+      existingSubscriptionIndex
+    );
+
+    const existingInvoice =
+      customer.subscriptions[existingSubscriptionIndex].invoice[
+        currentSubscriptionIndex
+      ];
+    console.log("existingInvoice:", existingInvoice);
+    if (currentSubscriptionIndex !== -1) {
+      customer.subscriptions[existingSubscriptionIndex].invoice[
+        currentSubscriptionIndex
+      ] = invoiceData;
+      //   return;
+    } else {
+      customer.subscriptions[existingSubscriptionIndex].invoice.push(
+        invoiceData
+      );
+    }
+
+    // Save the updated customer document to the database
+    await customer.save();
+    console.log(
+      "Invoice data updated successfully:",
+      customer.subscriptions[existingSubscriptionIndex]
+    );
+  } catch (error) {
+    console.error("Error handling invoice update:", error.message);
+    console.error("Stack trace:", error.stack);
   }
 };
 
@@ -56,14 +125,16 @@ export const handleCustomerSubscriptionUpdated = async (
   updatedSubscriptionData
 ) => {
   try {
+    if (!stripeId || !updatedSubscriptionData) {
+      throw new Error("Missing stripeId or updatedSubscriptionData.");
+    }
+
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
-    console.log("updatedSubscriptionData", updatedSubscriptionData);
 
     if (!customer) {
-      console.log(`Customer not found for stripeId ${stripeId}. Retrying...`);
-      // Temporarily store the subscription event for retrying later
-      // pendingSubscriptions.set(stripeId, updatedSubscriptionData);
+      console.warn(`Customer not found for Stripe ID: ${stripeId}`);
+      // Handle retry logic or temporary storage for missing customers here if needed
       return;
     }
 
@@ -71,74 +142,40 @@ export const handleCustomerSubscriptionUpdated = async (
     const existingSubscriptionIndex = customer.subscriptions.findIndex(
       (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
     );
+    console.log("existingSubscriptionIndex", existingSubscriptionIndex);
 
     if (existingSubscriptionIndex !== -1) {
       // Update the existing subscription
       customer.subscriptions[existingSubscriptionIndex] = {
         ...customer.subscriptions[existingSubscriptionIndex],
         ...updatedSubscriptionData,
+        invoice: customer.subscriptions[existingSubscriptionIndex].invoice, // Retain the existing invoice array
       };
+      console.log(
+        `Updated existing subscription at index ${existingSubscriptionIndex}.`
+      );
     } else {
       // Add a new subscription if it doesn't exist
       customer.subscriptions.push(updatedSubscriptionData);
+      console.log("Added new subscription to the customer.");
     }
 
     // Save the updated customer document to the database
     await customer.save();
-    console.log("Customer subscription updated successfully.");
-
-    // Remove from pending if it exists
-    // pendingSubscriptions.delete(stripeId);
+    console.log("Customer subscription updated successfully.", customer);
   } catch (error) {
     console.error(
-      "Error handling customer subscription updated:",
+      "Error handling customer subscription update:",
       error.message
     );
-  }
-};
-
-export const handleInvoice = async (stripeId, invoiceData) => {
-  try {
-    // Find the customer in the database by Stripe ID
-    let customer = await Customer.findOne({ stripeId });
-    console.log("invoiceData", invoiceData);
-
-    if (!customer) {
-      console.log(`invoice not found for stripeId ${stripeId}. Retrying...`);
-      // Temporarily store the subscription event for retrying later
-      // pendingSubscriptions2.set(stripeId, invoiceData);
-      return;
-    }
-
-    // Find the existing subscription by subscriptionId
-    const existingSubscriptionIndex = customer.subscriptions.findIndex(
-      (sub) => sub.subscriptionId === invoiceData.subscription
-    );
-    console.log("existingSubscriptionIndex", existingSubscriptionIndex);
-
-    // if (existingSubscriptionIndex !== -1) {
-    // Update the existing subscription
-    const existingSubscription =
-      customer.subscriptions[existingSubscriptionIndex];
-    console.log("existingSubscription", existingSubscription);
-
-    existingSubscription.invoice.push(invoiceData);
-
-    // Save the updated customer document to the database
-    await customer.save();
-    console.log("invoiceData updated successfully.");
-
-    // Remove from pending if it exists
-    // pendingSubscriptions2.delete(stripeId);
-  } catch (error) {
-    console.error("Error handling invoiceData update:", error.message);
+    console.error("Stack trace:", error.stack);
   }
 };
 
 export const handleCheckoutSessionCompleted = async (userId, session) => {
   try {
     const stripeId = session.customer; // Stripe customer ID
-    const email = session.customer_email; // Customer's email from Stripe
+    const email = session.metadata.userEmail; // Customer's email from Stripe
 
     if (!userId || !stripeId || !email) {
       throw new Error("Missing required session metadata or customer details.");
@@ -235,10 +272,7 @@ export const getRealtimeData = async (request, response) => {
       // await addSubscriptionToCustomer(stripeId, dummySubscriptionData);
       // Retry pending subscriptions periodically
       // setTimeout(async () => {
-        await handleCustomerSubscriptionUpdated(
-          stripeId,
-          dummySubscriptionData1
-        );
+      await handleCustomerSubscriptionUpdated(stripeId, dummySubscriptionData1);
       // }, 10000);
       break;
 
@@ -261,10 +295,10 @@ export const getRealtimeData = async (request, response) => {
       // console.log("updatedSubscriptionData1234567890", updateSubscriptionData);
 
       // setTimeout(async () => {
-        await handleCustomerSubscriptionUpdated(
-          subscription.customer,
-          updateSubscriptionData
-        );
+      await handleCustomerSubscriptionUpdated(
+        subscription.customer,
+        updateSubscriptionData
+      );
       // }, 10000);
       console.log(`Subscription updated. New status: ${status}`);
       break;

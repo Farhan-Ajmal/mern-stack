@@ -20,30 +20,41 @@ export const handleInvoice = async (stripeId, invoiceData) => {
     const existingSubscriptionIndex = customer.subscriptions.findIndex(
       (sub) => sub.subscriptionId === invoiceData.subscription
     );
+    const currentSubscription = customer.subscriptions.find(
+      (sub) => sub.subscriptionId === invoiceData.subscription
+    );
+    console.log("currentSubscription.invoice", currentSubscription.invoice);
 
-    console.log("Existing subscription index invoice:", existingSubscriptionIndex);
-
-    if (existingSubscriptionIndex === -1) {
-      console.warn(
-        `No subscription found for subscriptionId ${invoiceData.subscription}.`
+    let currentSubscriptionIndex = -1;
+    if (currentSubscription.invoice) {
+      currentSubscriptionIndex = currentSubscription.invoice.findIndex(
+        (invoice) => invoice.invoice_id === invoiceData.invoice_id
       );
-      return;
     }
 
-    const existingSubscription =
-      customer.subscriptions[existingSubscriptionIndex];
-    console.log("Existing subscription:", existingSubscription);
+    console.log("currentSubscription", currentSubscription);
+    console.log("currentSubscriptionIndex", currentSubscriptionIndex);
 
-    // Ensure the `invoice` field is an array
-    if (!Array.isArray(existingSubscription.invoice)) {
-      console.warn(
-        "Invoice field is not an array. Initializing as an empty array."
+    console.log(
+      "Existing subscription index invoice:",
+      existingSubscriptionIndex
+    );
+
+    const existingInvoice =
+      customer.subscriptions[existingSubscriptionIndex].invoice[
+        currentSubscriptionIndex
+      ];
+    console.log("existingInvoice:", existingInvoice);
+    if (currentSubscriptionIndex !== -1) {
+      customer.subscriptions[existingSubscriptionIndex].invoice[
+        currentSubscriptionIndex
+      ] = invoiceData;
+      //   return;
+    } else {
+      customer.subscriptions[existingSubscriptionIndex].invoice.push(
+        invoiceData
       );
-      existingSubscription.invoice = [];
     }
-
-    // Add the new invoice to the array
-    existingSubscription.invoice.push(invoiceData);
 
     // Save the updated customer document to the database
     await customer.save();
@@ -66,8 +77,6 @@ export const handleCustomerSubscriptionUpdated = async (
       throw new Error("Missing stripeId or updatedSubscriptionData.");
     }
 
-    console.log("Processing subscription update for Stripe ID:", stripeId);
-    console.log("Updated subscription data:", updatedSubscriptionData);
 
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
@@ -78,21 +87,13 @@ export const handleCustomerSubscriptionUpdated = async (
       return;
     }
 
-    console.log("Customer found:", customer);
 
     // Find the existing subscription by subscriptionId
     const existingSubscriptionIndex = customer.subscriptions.findIndex(
       (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
     );
-    console.log(
-      "below cus found",
-      customer.subscriptions[existingSubscriptionIndex]
-    );
-
-    console.log(
-      "customer.subscriptions[existingSubscriptionIndex].invoice",
-      customer.subscriptions[existingSubscriptionIndex].invoice
-    );
+   console.log("existingSubscriptionIndex", existingSubscriptionIndex);
+   
 
     if (existingSubscriptionIndex !== -1) {
       // Update the existing subscription
@@ -124,12 +125,12 @@ export const handleCustomerSubscriptionUpdated = async (
 
 export const testingDB = async () => {
   console.log("teting db");
-  const customer = await Customer.findById("dedara23");
+  const customer = await Customer.findById("dedara2345");
   if (!customer) {
     await Customer.create({
-      _id: "dedara23",
-      email: "dedara@mailinator.com",
-      stripeId: "cus_RfSUBddWeaaOjc",
+      _id: "dedara2345",
+      email: "dedara12345@mailinator.com",
+      stripeId: "cus_RfSUBddWeaaOjd",
       subscriptions: [],
     });
     // if (!customer) {
@@ -146,9 +147,9 @@ export const testingDB = async () => {
   await customer?.save();
   console.log("Customer saved successfully.", customer);
   //   return;
-  const stripeId = "cus_RfSUBddWeaaOjc";
+  const stripeId = "cus_RfSUBddWeaaOjd";
   const dummySubscriptionData1 = {
-    subscriptionId: "sub_1Qm7ZLFRpxCUo2PAwMhYaZKk",
+    subscriptionId: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
     cancel_at: new Date(2738043202 * 1000),
     cancel_at_period_end: false,
     canceled_at: new Date(2738043202 * 1000),
@@ -161,18 +162,18 @@ export const testingDB = async () => {
   //   console.log("Testing subscription update with data:", dummySubscriptionData1);
 
   await handleCustomerSubscriptionUpdated(stripeId, dummySubscriptionData1);
-  const invoiceCustomer = "cus_RfSUBddWeaaOjc";
+  const invoiceCustomer = "cus_RfSUBddWeaaOjd";
   const invoiceData = {
-    invoice_id: "in_1QiCozDPA0JjYlhgoYS3mmtQ",
+    invoice_id: "in_1QiCozDPA0JjYlhgoYS3xxtQ",
     amount_due: 999,
     amount_paid: 999,
     currency: "usd",
-    customer: "cus_RfSUBddWeaaOjc",
+    customer: "cus_RfSUBddWeaaOjd",
     period: {
       start: new Date(1738043102 * 1000), // Convert from Unix timestamp
       end: new Date(1738043120 * 1000),
     },
-    subscription: "sub_1Qm7ZLFRpxCUo2PAwMhYaZKk",
+    subscription: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
   };
 
   await handleInvoice(invoiceCustomer, invoiceData);

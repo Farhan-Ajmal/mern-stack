@@ -27,6 +27,20 @@ export const subscribeUser = async (req, res) => {
   }
 
   try {
+    // let customer;
+    // let customer_id;
+    // customer = await stripe.customers.list({
+    //   email: "bark5678@mailinator.com",
+    // });
+    // if (customer.data.length === 0) {
+    //   customer = await stripe.customers.create({
+    //     email: "bark5678@mailinator.com",
+    //   });
+    //   customer_id = customer.id;
+    // } else {
+    //   customer_id = customer.data[0].id;
+    // }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [
@@ -37,9 +51,11 @@ export const subscribeUser = async (req, res) => {
       ],
       success_url: `http://localhost:5001/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `http://localhost:5001/cancel`,
-      customer_email: "dedara@mailinator.com",
+      customer_email: "barks1323@mailinator.com",
+      // customer: customer_id,
       metadata: {
-        userId: "dedara1", // Store the logged-in user's ID
+        userEmail: "barks5678@mailinator.com",
+        userId: "barks23456789", // Store the logged-in user's ID
       },
     });
     res.status(200).json({ success: true, url: session.url }); // Send the Stripe Checkout URL as a response

@@ -4,8 +4,8 @@ import { testingDB } from "../controllers/testingDB.controller.js";
 
 const router = express.Router();
 
-// router.post("/", express.raw({ type: "application/json" }), getRealtimeData);
+router.post("/", express.raw({ type: "application/json" }), getRealtimeData);
 
-router.post("/",testingDB)
+// router.post("/",testingDB)
 
 export default router;
