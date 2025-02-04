@@ -1,6 +1,7 @@
 // import { application } from "express";
 import Stripe from "stripe";
 import Customer from "../models/customer.models.js";
+import User from "../models/user.models.js";
 // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const stripe = new Stripe(
   "sk_test_51QkKNSFRpxCUo2PABo52EiZ1cCFV3wl5JZLRqnbqfGJOrfMi4KZ21ijcQpWbrsxM3aKSwxHOz3elWWMRVjijsMdb00IUrffgj2"
@@ -51,7 +52,12 @@ const stripe = new Stripe(
 //   }
 // };
 
-export const handleInvoice = async (stripeId, invoiceData) => {
+export const handleInvoice = async (
+  stripeId,
+  customerEmail,
+  priceId,
+  invoiceData
+) => {
   try {
     if (!stripeId || !invoiceData) {
       throw new Error("Missing stripeId or invoiceData.");
@@ -59,19 +65,28 @@ export const handleInvoice = async (stripeId, invoiceData) => {
 
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
+    let user = await User.findOne({ email: customerEmail });
     console.log("Invoice data received:", invoiceData);
 
-    if (!customer) {
-      console.warn(`Customer not found for stripeId ${stripeId}.`);
+    if (!customer || !user) {
+      console.warn(
+        `Customer or user not found for stripeId ${stripeId} or customerEmail ${customerEmail}.`
+      );
       return;
     }
 
     console.log("Customer found:", customer);
 
-    // Find the existing subscription by subscriptionId
-    const existingSubscriptionIndex = customer.subscriptions.findIndex(
-      (sub) => sub.subscriptionId === invoiceData.subscription
+    // Retry mechanism to find the existing subscription by subscriptionId
+    const existingSubscriptionIndex = await retryWithExponentialBackoff(
+      async () => {
+        return customer.subscriptions.findIndex(
+          (sub) => sub.subscriptionId === invoiceData.subscription
+        );
+      }
     );
+    console.log("existingSubscriptionIndex in handle invoice", existingSubscriptionIndex);
+
     const currentSubscription = customer.subscriptions.find(
       (sub) => sub.subscriptionId === invoiceData.subscription
     );
@@ -107,6 +122,22 @@ export const handleInvoice = async (stripeId, invoiceData) => {
         invoiceData
       );
     }
+    let credits;
+    switch (priceId) {
+      case "price_1QkKUWFRpxCUo2PA0IBMb8Tk":
+        credits = 1000;
+        break;
+      case "price_1QmYTXFRpxCUo2PAFt5uOEWY":
+        credits = 10000;
+        break;
+
+      default:
+        break;
+    }
+    await user.updateOne({
+      $set: { credits: credits, priceId: priceId, isPro: true },
+    });
+    await user.save();
 
     // Save the updated customer document to the database
     await customer.save();
@@ -129,8 +160,14 @@ export const handleCustomerSubscriptionUpdated = async (
       throw new Error("Missing stripeId or updatedSubscriptionData.");
     }
 
-    // Find the customer in the database by Stripe ID
-    let customer = await Customer.findOne({ stripeId });
+    // Retry mechanism to ensure subscription data is available
+    const customer = await retryWithExponentialBackoff(async () => {
+      const customer = await Customer.findOne({ stripeId });
+      if (!customer) {
+        throw new Error("Customer not found. Retrying...");
+      }
+      return customer;
+    });
 
     if (!customer) {
       console.warn(`Customer not found for Stripe ID: ${stripeId}`);
@@ -204,6 +241,23 @@ export const handleCheckoutSessionCompleted = async (userId, session) => {
     console.log("Customer saved successfully.");
   } catch (error) {
     console.error("Error handling checkout session completed:", error.message);
+  }
+};
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const retryWithExponentialBackoff = async (
+  fn,
+  retries = 5,
+  initialDelay = 1000
+) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) {
+      throw error; // No more retries left
+    }
+    await delay(initialDelay); // Wait before retrying
+    return retryWithExponentialBackoff(fn, retries - 1, initialDelay * 2); // Retry with exponential backoff
   }
 };
 
@@ -324,9 +378,15 @@ export const getRealtimeData = async (request, response) => {
       console.log(
         `id: ${invoice.id}, amount_due: ${invoice.amount_due}, amount_paid: ${invoice.amount_paid},currency: ${invoice.currency},customer: ${invoice.customer}`
       );
-      console.log("qwerty", invoice.lines.data[0]);
+      console.log("qwerty", invoice.lines.data[0].plan.id);
+      const priceId = invoice.lines.data[0].plan.id;
       // setTimeout(async () => {
-      await handleInvoice(invoice.customer, invoiceData);
+      handleInvoice(
+        invoice.customer,
+        invoice.customer_email,
+        priceId,
+        invoiceData
+      );
       // }, 10000);
 
       break;

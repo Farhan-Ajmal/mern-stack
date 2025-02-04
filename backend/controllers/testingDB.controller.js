@@ -1,5 +1,7 @@
 import Customer from "../models/customer.models.js";
-export const handleInvoice = async (stripeId, invoiceData) => {
+import User from "../models/user.models.js";
+
+export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
   try {
     if (!stripeId || !invoiceData) {
       throw new Error("Missing stripeId or invoiceData.");
@@ -7,14 +9,20 @@ export const handleInvoice = async (stripeId, invoiceData) => {
 
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
-    console.log("Invoice data received:", invoiceData);
+    let user = await User.findOne({ email: customerEmail });
 
+    console.log("Invoice data received:", invoiceData);
+    if (!user) {
+      console.warn(`user not found for email ${customerEmail}.`);
+      return;
+    }
     if (!customer) {
       console.warn(`Customer not found for stripeId ${stripeId}.`);
       return;
     }
 
     console.log("Customer found:", customer);
+    console.log("User found:", user);
 
     // Find the existing subscription by subscriptionId
     const existingSubscriptionIndex = customer.subscriptions.findIndex(
@@ -55,9 +63,10 @@ export const handleInvoice = async (stripeId, invoiceData) => {
         invoiceData
       );
     }
-
+    await user.updateOne({ $set: { credits: 1000 } });
     // Save the updated customer document to the database
     await customer.save();
+    await user.save();
     console.log(
       "Invoice data updated successfully:",
       customer.subscriptions[existingSubscriptionIndex]
@@ -77,7 +86,6 @@ export const handleCustomerSubscriptionUpdated = async (
       throw new Error("Missing stripeId or updatedSubscriptionData.");
     }
 
-
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
 
@@ -87,13 +95,11 @@ export const handleCustomerSubscriptionUpdated = async (
       return;
     }
 
-
     // Find the existing subscription by subscriptionId
     const existingSubscriptionIndex = customer.subscriptions.findIndex(
       (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
     );
-   console.log("existingSubscriptionIndex", existingSubscriptionIndex);
-   
+    console.log("existingSubscriptionIndex", existingSubscriptionIndex);
 
     if (existingSubscriptionIndex !== -1) {
       // Update the existing subscription
@@ -175,8 +181,8 @@ export const testingDB = async () => {
     },
     subscription: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
   };
-
-  await handleInvoice(invoiceCustomer, invoiceData);
+  const customerEmail = "mads1323@mailinator.com";
+  await handleInvoice(invoiceCustomer, customerEmail, invoiceData);
 
   // Reload the customer to check updated data
   //   const updatedCustomer = await Customer.findById(customer._id);

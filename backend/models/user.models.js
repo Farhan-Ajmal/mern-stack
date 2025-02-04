@@ -14,6 +14,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  credits: {
+    type: Number,
+  },
+  isPro: {
+    type: Boolean,
+  },
+  priceId: {
+    type: String,
+  },
 });
 
 const User = mongoose.model("users", userSchema);
