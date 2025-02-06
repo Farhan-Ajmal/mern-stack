@@ -7,6 +7,7 @@ import subscriptionRoutes from "./routes/subscription.route.js";
 import authRouter from "./routes/auth.route.js";
 import stripeCustomerRouter from "./routes/stripe.route.js";
 import stripeWebhookRouter from "./routes/stripeWebhook.route.js";
+import userData from "./models/userData.models.js";
 // import Stripe from "stripe";
 
 // Initialize the Stripe instance with your secret key
@@ -35,17 +36,29 @@ app.use("/api/products", productRoutes);
 app.use("/api/auth", authRouter);
 app.use("/api/stripe/customers", stripeCustomerRouter);
 
-// stripe
+app.post("/api/user-data", async (req, res) => {
+  const { userEmail } = req.body;
+
+  try {
+    const findUserData = await userData.findOne({ email: userEmail });
+    if (!findUserData) {
+      console.log("user data not found");
+      res.status(404).json({ success: false, message: "user data not found" });
+    }
+    res.status(200).json({ success: true, data: findUserData });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 app.use("/subscribe", subscriptionRoutes);
 
 // Middleware to parse JSON requests
 
-app.listen(5000, () => {
+app.listen(5001, () => {
   connectDB();
-  // console.log("stripe0000", stripe);
 
-  console.log("Server started at http://localhost:5000");
+  console.log("Server started at http://localhost:5001");
 });
 
 // https://www.youtube.com/watch?v=O3BUHwfHf84&t=2359s

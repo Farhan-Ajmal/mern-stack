@@ -1,5 +1,6 @@
 import Customer from "../models/customer.models.js";
 import User from "../models/user.models.js";
+import userData from "../models/userData.models.js";
 
 export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
   try {
@@ -10,6 +11,8 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
     let user = await User.findOne({ email: customerEmail });
+    const findUserData = await userData.findOne({ email: customerEmail });
+    console.log("findUserData", findUserData);
 
     console.log("Invoice data received:", invoiceData);
     if (!user) {
@@ -63,10 +66,37 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
         invoiceData
       );
     }
-    await user.updateOne({ $set: { credits: 1000 } });
+    // await user.updateOne({ $set: { credits: 1000 } });
+
+    if (!findUserData) {
+      console.log("user data not found");
+      await userData.create({
+        email: "dedara12345@mailinator.com",
+        credits: 1000,
+        isPro: true,
+        priceId: "price_1QkKUWFRpxCUo2PA0IBMb8Tk",
+      });
+    } else {
+      console.log("updating user data....", await userData.find());
+      const allUsers = await userData.find(); // This will retrieve all users
+      const findCurrentUserIndex = await allUsers.findIndex(
+        (user) => user.email === "dedara12345@mailinator.com"
+      );
+      console.log("here999..............", findCurrentUserIndex);
+
+      await userData.updateOne(
+        { email: "dedara12345@mailinator.com" },
+        {
+          credits: 1300,
+          isPro: true,
+          priceId: "price_1QkKUWFRpxCUo2PA0IBMb8Tk",
+        }
+      );
+      // await userData.save();
+    }
     // Save the updated customer document to the database
     await customer.save();
-    await user.save();
+    // await user.save();
     console.log(
       "Invoice data updated successfully:",
       customer.subscriptions[existingSubscriptionIndex]
@@ -181,7 +211,7 @@ export const testingDB = async () => {
     },
     subscription: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
   };
-  const customerEmail = "mads1323@mailinator.com";
+  const customerEmail = "dedara12345@mailinator.com";
   await handleInvoice(invoiceCustomer, customerEmail, invoiceData);
 
   // Reload the customer to check updated data

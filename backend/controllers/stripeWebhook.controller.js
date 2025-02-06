@@ -2,6 +2,7 @@
 import Stripe from "stripe";
 import Customer from "../models/customer.models.js";
 import User from "../models/user.models.js";
+import userData from "../models/userData.models.js";
 // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const stripe = new Stripe(
   "sk_test_51QkKNSFRpxCUo2PABo52EiZ1cCFV3wl5JZLRqnbqfGJOrfMi4KZ21ijcQpWbrsxM3aKSwxHOz3elWWMRVjijsMdb00IUrffgj2"
@@ -66,6 +67,7 @@ export const handleInvoice = async (
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
     let user = await User.findOne({ email: customerEmail });
+    const findUserData = await userData.findOne({ email: customerEmail });
     console.log("Invoice data received:", invoiceData);
 
     if (!customer || !user) {
@@ -85,7 +87,10 @@ export const handleInvoice = async (
         );
       }
     );
-    console.log("existingSubscriptionIndex in handle invoice", existingSubscriptionIndex);
+    console.log(
+      "existingSubscriptionIndex in handle invoice",
+      existingSubscriptionIndex
+    );
 
     const currentSubscription = customer.subscriptions.find(
       (sub) => sub.subscriptionId === invoiceData.subscription
@@ -134,10 +139,21 @@ export const handleInvoice = async (
       default:
         break;
     }
-    await user.updateOne({
-      $set: { credits: credits, priceId: priceId, isPro: true },
-    });
-    await user.save();
+
+    if (!findUserData) {
+      console.log("user data not found");
+      await userData.create({
+        email: customerEmail,
+        credits: credits,
+        isPro: true,
+        priceId: priceId,
+      });
+    } else {
+      await userData.updateOne(
+        { email: customerEmail },
+        { credits: credits, isPro: true, priceId: priceId }
+      );
+    }
 
     // Save the updated customer document to the database
     await customer.save();
@@ -186,14 +202,15 @@ export const handleCustomerSubscriptionUpdated = async (
       customer.subscriptions[existingSubscriptionIndex] = {
         ...customer.subscriptions[existingSubscriptionIndex],
         ...updatedSubscriptionData,
-        invoice: customer.subscriptions[existingSubscriptionIndex].invoice, // Retain the existing invoice array
+        invoice:
+          customer.subscriptions[existingSubscriptionIndex].invoice || [], // Retain the existing invoice array
       };
       console.log(
         `Updated existing subscription at index ${existingSubscriptionIndex}.`
       );
     } else {
       // Add a new subscription if it doesn't exist
-      customer.subscriptions.push(updatedSubscriptionData);
+      customer.subscriptions.push({ ...updatedSubscriptionData, invoice: [] });
       console.log("Added new subscription to the customer.");
     }
 
