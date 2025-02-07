@@ -11,6 +11,10 @@ const userDataSchema = mongoose.Schema({
   priceId: {
     type: String,
   },
+  period: {
+    end: { type: Date, default: null },
+    start: { type: Date, default: null },
+  },
 });
 
 const userData = mongoose.model("user-data", userDataSchema);
