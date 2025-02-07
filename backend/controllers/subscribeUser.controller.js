@@ -27,19 +27,19 @@ export const subscribeUser = async (req, res) => {
   }
 
   try {
-    // let customer;
-    // let customer_id;
-    // customer = await stripe.customers.list({
-    //   email: "bark5678@mailinator.com",
-    // });
-    // if (customer.data.length === 0) {
-    //   customer = await stripe.customers.create({
-    //     email: "bark5678@mailinator.com",
-    //   });
-    //   customer_id = customer.id;
-    // } else {
-    //   customer_id = customer.data[0].id;
-    // }
+    let customer;
+    let customer_id;
+    customer = await stripe.customers.list({
+      email: "brott12345@mailinator.com",
+    });
+    if (customer.data.length === 0) {
+      customer = await stripe.customers.create({
+        email: "brott12345@mailinator.com",
+      });
+      customer_id = customer.id;
+    } else {
+      customer_id = customer.data[0].id;
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -51,8 +51,8 @@ export const subscribeUser = async (req, res) => {
       ],
       success_url: `http://localhost:5001/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `http://localhost:5001/cancel`,
-      customer_email: "brott12345@mailinator.com",
-      // customer: customer_id,
+      // customer_email: "brott12345@mailinator.com",
+      customer: customer_id,
       metadata: {
         userEmail: "brott12345@mailinator.com",
         userId: "brott234", // Store the logged-in user's ID
