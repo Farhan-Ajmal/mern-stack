@@ -37,15 +37,23 @@ app.use("/api/auth", authRouter);
 app.use("/api/stripe/customers", stripeCustomerRouter);
 
 app.post("/api/user-data", async (req, res) => {
-  const { userEmail } = req.body;
+  const { userEmail, creditsToDeduct } = req.body;
 
   try {
     const findUserData = await userData.findOne({ email: userEmail });
+
     if (!findUserData) {
       console.log("user data not found");
       res.status(404).json({ success: false, message: "user data not found" });
     }
-    res.status(200).json({ success: true, data: findUserData });
+    const newCredits = findUserData.credits - creditsToDeduct;
+    await userData.updateOne(
+      { email: userEmail },
+      { credits: findUserData.credits - creditsToDeduct }
+    );
+    const plainUserData = findUserData.toObject();
+    const newUserData = { ...plainUserData, credits: newCredits };
+    res.status(200).json({ success: true, data: newUserData });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
