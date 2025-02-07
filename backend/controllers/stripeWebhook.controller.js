@@ -101,7 +101,7 @@ export const handleInvoice = async (
     const currentSubscription = customer.subscriptions.find(
       (sub) => sub.subscriptionId === invoiceData.subscription
     );
-    console.log("currentSubscription.invoice", currentSubscription.invoice);
+    console.log("currentSubscription.invoice", currentSubscription);
 
     let currentSubscriptionIndex = -1;
     if (currentSubscription.invoice) {
@@ -154,8 +154,8 @@ export const handleInvoice = async (
         isPro: true,
         priceId: priceId,
         period: {
-          start: new Date(invoice.lines.data[0].period.start * 1000), // Convert from Unix timestamp
-          end: new Date(invoice.lines.data[0].period.end * 1000),
+          start: invoiceData.period.start, // Convert from Unix timestamp
+          end: invoiceData.period.end,
         },
       });
     } else {
@@ -166,8 +166,8 @@ export const handleInvoice = async (
           isPro: true,
           priceId: priceId,
           period: {
-            start: new Date(invoice.lines.data[0].period.start * 1000), // Convert from Unix timestamp
-            end: new Date(invoice.lines.data[0].period.end * 1000),
+            start: invoiceData.period.start, // Convert from Unix timestamp
+            end: invoiceData.period.end,
           },
         }
       );
