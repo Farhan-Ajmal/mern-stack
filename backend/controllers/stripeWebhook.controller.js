@@ -82,9 +82,15 @@ export const handleInvoice = async (
     // Retry mechanism to find the existing subscription by subscriptionId
     const existingSubscriptionIndex = await retryWithExponentialBackoff(
       async () => {
-        return customer.subscriptions.findIndex(
+        const index = customer.subscriptions.findIndex(
           (sub) => sub.subscriptionId === invoiceData.subscription
         );
+
+        if (index === -1) {
+          throw new Error("Subscription not found. Retrying....");
+        }
+
+        return index;
       }
     );
     console.log(
@@ -271,8 +277,13 @@ const retryWithExponentialBackoff = async (
     return await fn();
   } catch (error) {
     if (retries === 0) {
+      console.error("Max retries reached. Throwing error:", error.message);
       throw error; // No more retries left
     }
+
+    console.warn(
+      `Retry attempt remaining: ${retries}, Retrying in ${initialDelay}ms...`
+    );
     await delay(initialDelay); // Wait before retrying
     return retryWithExponentialBackoff(fn, retries - 1, initialDelay * 2); // Retry with exponential backoff
   }
