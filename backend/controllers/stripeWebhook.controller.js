@@ -363,15 +363,23 @@ export const getRealtimeData = async (request, response) => {
       status = subscription.status;
       const updateSubscriptionData = {
         subscriptionId: subscription.id,
-        cancel_at: new Date(subscription.cancel_at * 1000),
+        cancel_at: subscription.cancel_at
+          ? new Date(subscription.cancel_at * 1000)
+          : null,
         cancel_at_period_end: subscription.cancel_at_period_end,
-        canceled_at: new Date(subscription.canceled_at * 1000),
-        created: subscription.created,
+        canceled_at: subscription.canceled_at
+          ? new Date(subscription.canceled_at * 1000)
+          : null,
+        created: subscription.created
+          ? new Date(subscription.created * 1000)
+          : null,
         current_period_end: new Date(subscription.current_period_end * 1000),
         current_period_start: new Date(
           subscription.current_period_start * 1000
         ),
-        ended_at: subscription.ended_at,
+        ended_at: subscription.ended_at
+          ? new Date(subscription.ended_at * 1000)
+          : null,
       };
 
       // console.log("updatedSubscriptionData1234567890", updateSubscriptionData);
