@@ -41,16 +41,21 @@ app.post("/api/user-data", async (req, res) => {
 
   try {
     const findUserData = await userData.findOne({ email: userEmail });
+    var endPeriodSeconds = findUserData.period.end.getTime() / 1000;
+    const currentDate = new Date();
+    const currentDateSeconds = Math.round(currentDate.getTime() / 1000);
 
     if (!findUserData) {
       console.log("user data not found");
       res.status(404).json({ success: false, message: "user data not found" });
     }
-    const newCredits = findUserData.credits - creditsToDeduct;
-    await userData.updateOne(
-      { email: userEmail },
-      { credits: findUserData.credits - creditsToDeduct }
-    );
+    let newCredits;
+    if (findUserData.credits > 0 && currentDateSeconds < endPeriodSeconds) {
+      newCredits = findUserData.credits - creditsToDeduct;
+    } else {
+      newCredits = 0;
+    }
+    await userData.updateOne({ email: userEmail }, { credits: newCredits });
     const plainUserData = findUserData.toObject();
     const newUserData = { ...plainUserData, credits: newCredits };
     res.status(200).json({ success: true, data: newUserData });
