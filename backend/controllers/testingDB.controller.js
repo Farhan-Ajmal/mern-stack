@@ -195,8 +195,18 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
       "cus_RjDYFEZcodeimU"
     );
     // console.log("againcustomerSubscriptions", againcustomerSubscriptions);
-    let customerInDb = await Customer.findOne({ stripeId: "cus_RjDYFEZcodeimU" });
-    console.log("customerInDb", customerInDb);
+    let customerInDb = await Customer.findOne({
+      stripeId: "cus_RjDYFEZcodeimU",
+    });
+    customerInDb.subscriptions.map((data) => {
+      console.log("data.subscriptionId", data.subscriptionId);
+
+      const foundSubData = againcustomerSubscriptions.find(
+        (custSubData) => custSubData.id === data.subscriptionId
+      );
+      console.log("foundSubData", foundSubData);
+    });
+    // console.log("customerInDb", customerInDb);
 
     let currentSubscriptionIndex = -1;
     if (currentSubscription.invoice) {
