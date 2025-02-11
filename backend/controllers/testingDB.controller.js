@@ -186,7 +186,7 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
 
     fetchSubscriptions.map(
       async (subscriptionId) =>
-        await stripe.subscriptions.update("sub_1QqqzIFRpxCUo2PADfnMKQDH", {
+        await stripe.subscriptions.update("sub_1Qpqy0FRpxCUo2PAcXhTpAhP", {
           cancel_at_period_end: true,
         })
     );
@@ -198,15 +198,43 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
     let customerInDb = await Customer.findOne({
       stripeId: "cus_RjDYFEZcodeimU",
     });
-    customerInDb.subscriptions.map((data) => {
-      console.log("data.subscriptionId", data.subscriptionId);
+    if (!customerInDb) {
+      console.error("Customer not found!");
+      return;
+    }
 
+    // Loop through customer subscriptions and update the necessary fields
+    customerInDb.subscriptions.map((subscription, index) => {
       const foundSubData = againcustomerSubscriptions.find(
-        (custSubData) => custSubData.id === data.subscriptionId
+        (custSubData) => custSubData.id === subscription.subscriptionId
       );
-      console.log("foundSubData", foundSubData);
+      console.log("foundSubData======", foundSubData);
+
+      console.log("Checking subscriptionId:", subscription.subscriptionId);
+      // console.log("Found subscription data:", foundSubData);
+
+      if (!foundSubData) {
+        console.warn(
+          `No matching subscription found for subscriptionId: ${subscription.subscriptionId}`
+        );
+        return; // Skip iteration if no match is found
+      }
+
+      customerInDb.set(`subscriptions.${index}`, {
+        ...subscription,
+        cancel_at: foundSubData.cancel_at
+          ? new Date(foundSubData.cancel_at * 1000)
+          : null,
+        cancel_at_period_end: foundSubData.cancel_at_period_end,
+        canceled_at: foundSubData.canceled_at
+          ? new Date(foundSubData.canceled_at * 1000)
+          : null,
+      });
     });
-    // console.log("customerInDb", customerInDb);
+
+    // Save only once after all updates
+    await customerInDb.save();
+    console.log("Subscriptions updated successfully!");
 
     let currentSubscriptionIndex = -1;
     if (currentSubscription.invoice) {
