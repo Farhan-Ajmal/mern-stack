@@ -53,6 +53,145 @@ const stripe = new Stripe(
 //   }
 // };
 
+// export const handleInvoice = async (
+//   stripeId,
+//   customerEmail,
+//   priceId,
+//   invoiceData
+// ) => {
+//   try {
+//     if (!stripeId || !invoiceData) {
+//       throw new Error("Missing stripeId or invoiceData.");
+//     }
+
+//     // Find the customer in the database by Stripe ID
+//     let customer = await Customer.findOne({ stripeId });
+//     let user = await User.findOne({ email: customerEmail });
+//     const findUserData = await userData.findOne({ email: customerEmail });
+//     console.log("Invoice data received:", invoiceData);
+
+//     if (!customer || !user) {
+//       console.warn(
+//         `Customer or user not found for stripeId ${stripeId} or customerEmail ${customerEmail}.`
+//       );
+//       return;
+//     }
+
+//     console.log("Customer found:", customer);
+
+//     // Retry mechanism to find the existing subscription by subscriptionId
+//     const existingSubscriptionIndex = await retryWithExponentialBackoff(
+//       async () => {
+//         const index = customer.subscriptions.findIndex(
+//           (sub) => sub.subscriptionId === invoiceData.subscription
+//         );
+
+//         if (index === -1) {
+//           throw new Error("Subscription not found. Retrying....");
+//         }
+
+//         return index;
+//       }
+//     );
+//     console.log(
+//       "existingSubscriptionIndex in handle invoice",
+//       existingSubscriptionIndex
+//     );
+
+//     const currentSubscription = customer.subscriptions.find(
+//       (sub) => sub.subscriptionId === invoiceData.subscription
+//     );
+//     console.log("currentSubscription.invoice", currentSubscription);
+
+//     let currentSubscriptionIndex = -1;
+//     if (currentSubscription.invoice) {
+//       currentSubscriptionIndex = currentSubscription.invoice.findIndex(
+//         (invoice) => invoice.invoice_id === invoiceData.invoice_id
+//       );
+//     }
+
+//     console.log("currentSubscription", currentSubscription);
+//     console.log("currentSubscriptionIndex", currentSubscriptionIndex);
+
+//     console.log(
+//       "Existing subscription index invoice:",
+//       existingSubscriptionIndex
+//     );
+
+//     // const existingInvoice =
+//     //   customer.subscriptions[existingSubscriptionIndex].invoice[
+//     //     currentSubscriptionIndex
+//     //   ];
+//     if (currentSubscriptionIndex !== -1) {
+//       customer.subscriptions[existingSubscriptionIndex].invoice[
+//         currentSubscriptionIndex
+//       ] = invoiceData;
+//       //   return;
+//     } else {
+//       customer.subscriptions[existingSubscriptionIndex].invoice.push(
+//         invoiceData
+//       );
+//     }
+//     let credits;
+//     switch (priceId) {
+//       case "price_1QkKUWFRpxCUo2PA0IBMb8Tk":
+//         credits = 1000;
+//         break;
+//       case "price_1QmYTXFRpxCUo2PAFt5uOEWY":
+//         credits = 10000;
+//         break;
+
+//       default:
+//         break;
+//     }
+
+//     if (!findUserData) {
+//       console.log("user data not found");
+//       await userData.create({
+//         email: customerEmail,
+//         credits: credits,
+//         isPro: true,
+//         priceId: priceId,
+//         period: {
+//           start: invoiceData.period.start, // Convert from Unix timestamp
+//           end: invoiceData.period.end,
+//         },
+//       });
+//     } else {
+//       await userData.updateOne(
+//         { email: customerEmail },
+//         {
+//           credits: credits,
+//           isPro: true,
+//           priceId: priceId,
+//           period: {
+//             start: invoiceData.period.start, // Convert from Unix timestamp
+//             end: invoiceData.period.end,
+//           },
+//         }
+//       );
+//     }
+
+//     // Save the updated customer document to the database
+//     await customer.save();
+//     console.log(
+//       "Invoice data updated successfully:",
+//       customer.subscriptions[existingSubscriptionIndex]
+//     );
+//   } catch (error) {
+//     console.error("Error handling invoice update:", error.message);
+//     console.error("Stack trace:", error.stack);
+//   }
+// };
+
+async function getSubscriptionsByCustomer(customerId) {
+  const subscriptions = await stripe.subscriptions.list({
+    customer: customerId,
+  });
+
+  return subscriptions.data;
+}
+
 export const handleInvoice = async (
   stripeId,
   customerEmail,
@@ -101,7 +240,85 @@ export const handleInvoice = async (
     const currentSubscription = customer.subscriptions.find(
       (sub) => sub.subscriptionId === invoiceData.subscription
     );
-    console.log("currentSubscription.invoice", currentSubscription);
+
+    const customerSubscriptions = await getSubscriptionsByCustomer(stripeId);
+
+    // not working
+    
+    const fetchSubscriptions = customerSubscriptions.map((subscriptionData) => {
+      // console.log("subscriptionData111111111", subscriptionData);
+      if (subscriptionData.id !== currentSubscription.subscriptionId) {
+        // console.log("fetch0000Data123", subscriptionData.id);
+        const subscriptionId = subscriptionData.id;
+        return subscriptionId;
+      }
+    });
+
+    fetchSubscriptions.map(
+      async (subscriptionId) =>
+        await stripe.subscriptions.update(subscriptionId, {
+          cancel_at_period_end: true,
+        })
+    );
+
+    // working
+    // console.log("customerSubscriptions", customerSubscriptions);
+    // const fetchSubscriptions = customerSubscriptions
+    //   .filter((sub) => sub.id !== currentSubscription.subscriptionId)
+    //   .map((sub) => sub.id);
+
+    // for (const subscriptionId of fetchSubscriptions) {
+    //   await stripe.subscriptions.update(subscriptionId, {
+    //     cancel_at_period_end: true,
+    //   });
+    // }
+
+
+
+
+    const againcustomerSubscriptions = await getSubscriptionsByCustomer(
+      stripeId
+    );
+    // console.log("againcustomerSubscriptions", againcustomerSubscriptions);
+    let customerInDb = await Customer.findOne({
+      stripeId,
+    });
+    if (!customerInDb) {
+      console.error("Customer not found!");
+      return;
+    }
+
+    // Loop through customer subscriptions and update the necessary fields
+    customerInDb.subscriptions.map((subscription, index) => {
+      const foundSubData = againcustomerSubscriptions.find(
+        (custSubData) => custSubData.id === subscription.subscriptionId
+      );
+      console.log("foundSubData======", foundSubData);
+
+      console.log("Checking subscriptionId:", subscription.subscriptionId);
+      // console.log("Found subscription data:", foundSubData);
+
+      if (!foundSubData) {
+        console.warn(
+          `No matching subscription found for subscriptionId: ${subscription.subscriptionId}`
+        );
+        return; // Skip iteration if no match is found
+      }
+
+      customerInDb.set(`subscriptions.${index}`, {
+        ...subscription,
+        cancel_at: foundSubData.cancel_at
+          ? new Date(foundSubData.cancel_at * 1000)
+          : null,
+        cancel_at_period_end: foundSubData.cancel_at_period_end,
+        canceled_at: foundSubData.canceled_at
+          ? new Date(foundSubData.canceled_at * 1000)
+          : null,
+      });
+    });
+
+    // Save only once after all updates
+    await customerInDb.save();
 
     let currentSubscriptionIndex = -1;
     if (currentSubscription.invoice) {
@@ -118,21 +335,18 @@ export const handleInvoice = async (
       existingSubscriptionIndex
     );
 
-    const existingInvoice =
-      customer.subscriptions[existingSubscriptionIndex].invoice[
-        currentSubscriptionIndex
-      ];
-    console.log("existingInvoice:", existingInvoice);
     if (currentSubscriptionIndex !== -1) {
       customer.subscriptions[existingSubscriptionIndex].invoice[
         currentSubscriptionIndex
       ] = invoiceData;
-      //   return;
+      console.log("Updated existing invoice.");
     } else {
       customer.subscriptions[existingSubscriptionIndex].invoice.push(
         invoiceData
       );
+      console.log("Pushed new invoice to the array.");
     }
+
     let credits;
     switch (priceId) {
       case "price_1QkKUWFRpxCUo2PA0IBMb8Tk":
@@ -173,10 +387,19 @@ export const handleInvoice = async (
       );
     }
 
+    // Log the customer subscriptions before saving
+    console.log(
+      "Customer subscriptions before save:",
+      customer.subscriptions[existingSubscriptionIndex]
+    );
+
     // Save the updated customer document to the database
     await customer.save();
+    console.log("Customer saved successfully:", customer);
+
+    // Log the customer subscriptions after saving
     console.log(
-      "Invoice data updated successfully:",
+      "Customer subscriptions after save:",
       customer.subscriptions[existingSubscriptionIndex]
     );
   } catch (error) {
@@ -360,12 +583,6 @@ export const getRealtimeData = async (request, response) => {
         ended_at: subscription.ended_at
           ? new Date(subscription.ended_at)
           : null,
-      };
-
-      const dummySubscriptionData = {
-        subscriptionId: subscription.id,
-        cancel_at: subscription.cancel_at,
-        cancel_at_period_end: subscription.cancel_at_period_end,
       };
 
       console.log(`Handling subscription created for customer: ${stripeId}`);
