@@ -186,7 +186,7 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
 
     fetchSubscriptions.map(
       async (subscriptionId) =>
-        await stripe.subscriptions.update("sub_1Qpqy0FRpxCUo2PAcXhTpAhP", {
+        await stripe.subscriptions.update(subscriptionId, {
           cancel_at_period_end: true,
         })
     );
