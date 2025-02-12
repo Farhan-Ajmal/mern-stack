@@ -2,8 +2,16 @@ import mongoose from "mongoose";
 import Product from "../models/product.models.js";
 
 export const getProducts = async (req, res) => {
+  const page = parseInt(req.query.page) || null;
+  const limit = parseInt(req.query.limit) || null;
+  const startIndex = (page - 1) * limit || null;
+  const endIndex = page * limit || null;
+
   try {
-    const products = await Product.find({});
+    const fetchProducts = await Product.find({});
+    const products = req.query.page
+      ? fetchProducts.slice(startIndex, endIndex)
+      : fetchProducts;
     res.status(200).json({ success: true, data: products });
   } catch (error) {
     console.log("error in fetching products:", error.message);

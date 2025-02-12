@@ -2,12 +2,13 @@ import { create } from "zustand";
 
 export const useProductStore = create((set) => ({
   products: [],
+  productCount: 0,
   setProducts: (products) => set({ products }),
   createProduct: async (newProduct) => {
     if (!newProduct.name || !newProduct.image || !newProduct.price) {
       return { success: false, message: "Please fill in all fields." };
     }
-    const res = await fetch("http://localhost:5000/api/products", {
+    const res = await fetch("http://localhost:5001/api/products", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -18,13 +19,19 @@ export const useProductStore = create((set) => ({
     set((state) => ({ products: [...state.products, data.data] }));
     return { success: true, message: "Product created successfully" };
   },
-  fetchProducts: async () => {
-    const res = await fetch("http://localhost:5000/api/products");
+  fetchProducts: async (pageNumber) => {
+    const res = await fetch(
+      `http://localhost:5001/api/products?page=${pageNumber}&limit=3`
+    );
+
+    const totalRes = await fetch("http://localhost:5001/api/products");
     const data = await res.json();
-    set({ products: data.data });
+    const totalData = await totalRes.json();
+    set({ products: data.data, productCount: totalData.data.length });
   },
+
   deleteProduct: async (pid) => {
-    const res = await fetch(`http://localhost:5000/api/products/${pid}`, {
+    const res = await fetch(`http://localhost:5001/api/products/${pid}`, {
       method: "DELETE",
     });
     const data = await res.json();
@@ -37,7 +44,7 @@ export const useProductStore = create((set) => ({
     return { success: true, message: data.message };
   },
   updateProduct: async (pid, updatedProduct) => {
-    const res = await fetch(`http://localhost:5000/api/products/${pid}`, {
+    const res = await fetch(`http://localhost:5001/api/products/${pid}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

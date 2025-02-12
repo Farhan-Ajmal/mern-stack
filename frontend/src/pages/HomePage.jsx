@@ -1,16 +1,31 @@
-import { Container, SimpleGrid, Text, VStack } from "@chakra-ui/react";
-import { useEffect } from "react";
+import {
+  Button,
+  Container,
+  Flex,
+  SimpleGrid,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 // import { Link } from "react-router-dom";
 // import { useProductStore } from "../store/product";
 import ProductCard from "../components/ProductCard";
 import { useProductStore } from "../store/product.js";
 
 const HomePage = () => {
-  const { fetchProducts, products } = useProductStore();
+  const [pageNumber, setPageNumber] = useState(1);
+
+  const { fetchProducts, products, productCount } = useProductStore();
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    fetchProducts(pageNumber);
+  }, [fetchProducts, pageNumber]);
+
+  const totalPagination = Math.floor(productCount / 3);
+  console.log("products.length", totalPagination);
+  const handlePagination = (selectedPage) => {
+    setPageNumber(selectedPage);
+  };
 
   return (
     <Container maxW="container.xl" py={12}>
@@ -38,7 +53,19 @@ const HomePage = () => {
             <ProductCard key={product._id} product={product} />
           ))}
         </SimpleGrid>
-
+        <Flex gap={4}>
+          {Array(totalPagination)
+            .fill()
+            .map((data, index) => (
+              <Button
+                key={index}
+                color={"#000000"}
+                onClick={() => handlePagination(index + 1)}
+              >
+                {index + 1}
+              </Button>
+            ))}
+        </Flex>
         {products.length === 0 && (
           <Text
             fontSize="xl"
