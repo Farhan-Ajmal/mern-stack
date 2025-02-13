@@ -21,7 +21,7 @@ const HomePage = () => {
     fetchProducts(pageNumber);
   }, [fetchProducts, pageNumber]);
 
-  const totalPagination = Math.floor(productCount / 3);
+  const totalPagination = Math.ceil(productCount / 3);
   console.log("products.length", totalPagination);
   const handlePagination = (selectedPage) => {
     setPageNumber(selectedPage);

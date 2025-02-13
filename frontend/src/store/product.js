@@ -16,7 +16,9 @@ export const useProductStore = create((set) => ({
       body: JSON.stringify(newProduct),
     });
     const data = await res.json();
-    set((state) => ({ products: [...state.products, data.data] }));
+    set((state) => ({
+      products: [...state.products, data.data],
+    }));
     return { success: true, message: "Product created successfully" };
   },
   fetchProducts: async (pageNumber) => {
@@ -24,10 +26,9 @@ export const useProductStore = create((set) => ({
       `http://localhost:5001/api/products?page=${pageNumber}&limit=3`
     );
 
-    const totalRes = await fetch("http://localhost:5001/api/products");
     const data = await res.json();
-    const totalData = await totalRes.json();
-    set({ products: data.data, productCount: totalData.data.length });
+
+    set({ products: data.data, productCount: data.totalCount });
   },
 
   deleteProduct: async (pid) => {
