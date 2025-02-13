@@ -12,7 +12,8 @@ export const getProducts = async (req, res) => {
     const products = req.query.page
       ? fetchProducts.slice(startIndex, endIndex)
       : fetchProducts;
-    res.status(200).json({ success: true, data: products });
+    const totalCount = await Product.countDocuments(); // Get total product count
+    res.status(200).json({ success: true, data: products, totalCount });
   } catch (error) {
     console.log("error in fetching products:", error.message);
     res.status(500).json({ success: false, message: "Server Error" });
