@@ -3,7 +3,7 @@ import { Button } from "@chakra-ui/react";
 const Subscribe = () => {
   const handleSubscribe = async (plan) => {
     try {
-      const response = await fetch("http://localhost:5000/subscribe", {
+      const response = await fetch("http://localhost:5001/subscribe", {
         method: "POST", // Use POST instead of GET
         headers: {
           "Content-Type": "application/json",

@@ -8,6 +8,8 @@ import authRouter from "./routes/auth.route.js";
 import stripeCustomerRouter from "./routes/stripe.route.js";
 import stripeWebhookRouter from "./routes/stripeWebhook.route.js";
 import userData from "./models/userData.models.js";
+import cookieParser from "cookie-parser";
+import jwt from "jsonwebtoken";
 // import Stripe from "stripe";
 
 // Initialize the Stripe instance with your secret key
@@ -30,11 +32,36 @@ app.use(
 // Webhook route
 app.use("/api/stripe/webhook", stripeWebhookRouter);
 app.use(express.json());
+app.use(cookieParser()); // This enables req.cookies
 app.use("/api/products", productRoutes);
 // app.use("/api/users", userRoutes);
 // app.use("/api/users/login", userRoutes);
 app.use("/api/auth", authRouter);
 app.use("/api/stripe/customers", stripeCustomerRouter);
+
+app.post("/api/refresh", (req, res) => {
+  const refreshToken = req.cookies["refreshToken"];
+  if (!refreshToken) {
+    return res.status(401).send("Access Denied. No refresh token provided.");
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+    const accessToken = jwt.sign(
+      { email: decoded.email, _id: decoded._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1m",
+      }
+    );
+    res.status(200).json({ success: true, accessToken: accessToken });
+    res.header("Authorization", accessToken).send(decoded.user);
+  } catch (error) {
+    return res
+      .status(400)
+      .json({ message: `${error.name}:: ${error.message}` });
+  }
+});
 
 app.post("/api/user-data", async (req, res) => {
   const { userEmail, creditsToDeduct } = req.body;

@@ -11,8 +11,12 @@ import { useEffect, useState } from "react";
 // import { useProductStore } from "../store/product";
 import ProductCard from "../components/ProductCard";
 import { useProductStore } from "../store/product.js";
-
+import { Link, useLocation, useNavigate } from "react-router-dom";
 const HomePage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  console.log("location", location.pathname);
+
   const [pageNumber, setPageNumber] = useState(1);
 
   const { fetchProducts, products, productCount } = useProductStore();
@@ -25,6 +29,7 @@ const HomePage = () => {
   console.log("products.length", totalPagination);
   const handlePagination = (selectedPage) => {
     setPageNumber(selectedPage);
+    navigate(`/${selectedPage}`);
   };
 
   return (
@@ -57,13 +62,13 @@ const HomePage = () => {
           {Array(totalPagination)
             .fill()
             .map((data, index) => (
-              <Button
+              <Link
                 key={index}
                 color={"#000000"}
                 onClick={() => handlePagination(index + 1)}
               >
                 {index + 1}
-              </Button>
+              </Link>
             ))}
         </Flex>
         {products.length === 0 && (

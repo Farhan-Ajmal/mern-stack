@@ -19,8 +19,21 @@ export const login = async (req, res) => {
     const jwtToken = jwt.sign(
       { email: user.email, _id: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1m" }
     );
+
+    const refreshToken = jwt.sign(
+      { email: user.email, _id: user._id },
+      process.env.REFRESH_SECRET,
+      { expiresIn: "5m" } // Long-lived token
+    );
+    console.log("refreshToken", refreshToken);
+
+    // Save refresh token in an httpOnly cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "strict",
+    });
 
     res.status(200).json({
       message: "Login Success",
