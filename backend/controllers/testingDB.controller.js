@@ -1,4 +1,6 @@
 import Customer from "../models/customer.models.js";
+import Invoice from "../models/invoice.models.js";
+import Subscription from "../models/subscription.models.js";
 import User from "../models/user.models.js";
 import userData from "../models/userData.models.js";
 import Stripe from "stripe";
@@ -137,7 +139,9 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
     }
 
     // Find the customer in the database by Stripe ID
-    let customer = await Customer.findOne({ stripeId });
+    // let customer = await Customer.findOne({ stripeId });
+    let subscriptions = await Subscription.find();
+    let invoices = await Invoice.findOne();
     let user = await User.findOne({ email: customerEmail });
     const findUserData = await userData.findOne({ email: customerEmail });
     // console.log("findUserData", findUserData);
@@ -147,19 +151,19 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
       console.warn(`user not found for email ${customerEmail}.`);
       return;
     }
-    if (!customer) {
-      console.warn(`Customer not found for stripeId ${stripeId}.`);
-      return;
-    }
+    // if (!customer) {
+    //   console.warn(`Customer not found for stripeId ${stripeId}.`);
+    //   return;
+    // }
 
     // console.log("Customer found:", customer);
     // console.log("User found:", user);
 
     // Find the existing subscription by subscriptionId
-    const existingSubscriptionIndex = customer.subscriptions.findIndex(
+    const existingSubscriptionIndex = subscriptions.findIndex(
       (sub) => sub.subscriptionId === invoiceData.subscription
     );
-    const currentSubscription = customer.subscriptions.find(
+    const currentSubscription = subscriptions.find(
       (sub) => sub.subscriptionId === invoiceData.subscription
     );
     // console.log("currentSubscription", currentSubscription);
@@ -195,16 +199,16 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
       "cus_RjDYFEZcodeimU"
     );
     // console.log("againcustomerSubscriptions", againcustomerSubscriptions);
-    let customerInDb = await Customer.findOne({
+    let subscriptionInDb = await Subscription.findOne({
       stripeId: "cus_RjDYFEZcodeimU",
     });
-    if (!customerInDb) {
+    if (!subscriptionInDb) {
       console.error("Customer not found!");
       return;
     }
 
     // Loop through customer subscriptions and update the necessary fields
-    customerInDb.subscriptions.map((subscription, index) => {
+    subscriptionInDb.map((subscription, index) => {
       const foundSubData = againcustomerSubscriptions.find(
         (custSubData) => custSubData.id === subscription.subscriptionId
       );
@@ -220,7 +224,7 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
         return; // Skip iteration if no match is found
       }
 
-      customerInDb.set(`subscriptions.${index}`, {
+      subscriptionInDb.set(`subscriptions.${index}`, {
         ...subscription,
         cancel_at: foundSubData.cancel_at
           ? new Date(foundSubData.cancel_at * 1000)
@@ -233,7 +237,7 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
     });
 
     // Save only once after all updates
-    await customerInDb.save();
+    await subscriptionInDb.save();
     console.log("Subscriptions updated successfully!");
 
     let currentSubscriptionIndex = -1;
@@ -250,28 +254,28 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
     //   "Existing subscription index invoice:",
     //   existingSubscriptionIndex
     // );
-
-    const existingInvoice =
-      customer.subscriptions[existingSubscriptionIndex].invoice[
-        currentSubscriptionIndex
-      ];
-    // console.log("existingInvoice:", existingInvoice);
-    if (currentSubscriptionIndex !== -1) {
-      customer.subscriptions[existingSubscriptionIndex].invoice[
-        currentSubscriptionIndex
-      ] = invoiceData;
-      //   return;
-    } else {
-      customer.subscriptions[existingSubscriptionIndex].invoice.push(
-        invoiceData
-      );
-    }
+    await invoices.create(invoiceData);
+    // const existingInvoice =
+    //   customer.subscriptions[existingSubscriptionIndex].invoice[
+    //     currentSubscriptionIndex
+    //   ];
+    // // console.log("existingInvoice:", existingInvoice);
+    // if (currentSubscriptionIndex !== -1) {
+    //   customer.subscriptions[existingSubscriptionIndex].invoice[
+    //     currentSubscriptionIndex
+    //   ] = invoiceData;
+    //   //   return;
+    // } else {
+    //   customer.subscriptions[existingSubscriptionIndex].invoice.push(
+    //     invoiceData
+    //   );
+    // }
     // await user.updateOne({ $set: { credits: 1000 } });
 
     if (!findUserData) {
       console.log("user data not found");
       await userData.create({
-        email: "dedara12345@mailinator.com",
+        email: "newdedara12345refrencing@mailinator.com",
         credits: 1000,
         isPro: true,
         priceId: "price_1QkKUWFRpxCUo2PA0IBMb8Tk",
@@ -280,12 +284,12 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
       // console.log("updating user data....", await userData.find());
       const allUsers = await userData.find(); // This will retrieve all users
       const findCurrentUserIndex = await allUsers.findIndex(
-        (user) => user.email === "dedara12345@mailinator.com"
+        (user) => user.email === "newdedara12345refrencing@mailinator.com"
       );
       console.log("here999..............", findCurrentUserIndex);
 
       await userData.updateOne(
-        { email: "dedara12345@mailinator.com" },
+        { email: "newdedara12345refrencing@mailinator.com" },
         {
           credits: 1300,
           isPro: true,
@@ -295,7 +299,7 @@ export const handleInvoice = async (stripeId, customerEmail, invoiceData) => {
       // await userData.save();
     }
     // Save the updated customer document to the database
-    await customer.save();
+    // await customer.save();
     // await user.save();
     // console.log(
     //   "Invoice data updated successfully:",
@@ -318,6 +322,7 @@ export const handleCustomerSubscriptionUpdated = async (
 
     // Find the customer in the database by Stripe ID
     let customer = await Customer.findOne({ stripeId });
+    let subscriptions = await Subscription.find();
 
     if (!customer) {
       console.warn(`Customer not found for Stripe ID: ${stripeId}`);
@@ -326,30 +331,31 @@ export const handleCustomerSubscriptionUpdated = async (
     }
 
     // Find the existing subscription by subscriptionId
-    const existingSubscriptionIndex = customer.subscriptions.findIndex(
+    const existingSubscriptionIndex = subscriptions.findIndex(
       (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
     );
-    // console.log("existingSubscriptionIndex", existingSubscriptionIndex);
+
+    console.log("existingSubscriptionIndex", existingSubscriptionIndex);
 
     if (existingSubscriptionIndex !== -1) {
       // Update the existing subscription
-      customer.subscriptions[existingSubscriptionIndex] = {
-        ...customer.subscriptions[existingSubscriptionIndex],
+      subscriptions[existingSubscriptionIndex] = {
+        ...subscriptions[existingSubscriptionIndex],
         ...updatedSubscriptionData,
-        invoice: customer.subscriptions[existingSubscriptionIndex].invoice, // Retain the existing invoice array
+        // invoice: customer.subscriptions[existingSubscriptionIndex].invoice, // Retain the existing invoice array
       };
       console.log(
         `Updated existing subscription at index ${existingSubscriptionIndex}.`
       );
     } else {
       // Add a new subscription if it doesn't exist
-      customer.subscriptions.push(updatedSubscriptionData);
-      console.log("Added new subscription to the customer.");
+      await Subscription.create({ stripeId, updatedSubscriptionData });
+      console.log("Added new subscription to the customer.", subscriptions);
     }
 
     // Save the updated customer document to the database
-    await customer.save();
-    // console.log("Customer subscription updated successfully.", customer);
+    // await subscriptions.save();
+    console.log("Customer subscription updated successfully.", subscriptions);
   } catch (error) {
     console.error(
       "Error handling customer subscription update:",
@@ -365,9 +371,8 @@ export const testingDB = async () => {
   if (!customer) {
     await Customer.create({
       _id: "dedara2345",
-      email: "dedara12345@mailinator.com",
+      email: "newdedara12345refrencing@mailinator.com",
       stripeId: "cus_RfSUBddWeaaOjd",
-      subscriptions: [],
     });
     // if (!customer) {
     //   throw new Error("Customer creation failed. Received null response.");
@@ -411,7 +416,7 @@ export const testingDB = async () => {
     },
     subscription: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
   };
-  const customerEmail = "dedara12345@mailinator.com";
+  const customerEmail = "newdedara12345refrencing@mailinator.com";
   await handleInvoice(invoiceCustomer, customerEmail, invoiceData);
 
   // Reload the customer to check updated data
