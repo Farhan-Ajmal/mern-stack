@@ -330,26 +330,32 @@ export const handleCustomerSubscriptionUpdated = async (
       return;
     }
 
-    // Find the existing subscription by subscriptionId
-    const existingSubscriptionIndex = subscriptions.findIndex(
-      (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
-    );
+    // Find the subscription with the same subscriptionId
+    let existingSubscription = await Subscription.findOne({
+      stripeId,
+      "subscription.subscriptionId": updatedSubscriptionData.subscriptionId,
+    });
 
-    console.log("existingSubscriptionIndex", existingSubscriptionIndex);
-
-    if (existingSubscriptionIndex !== -1) {
-      // Update the existing subscription
-      subscriptions[existingSubscriptionIndex] = {
-        ...subscriptions[existingSubscriptionIndex],
-        ...updatedSubscriptionData,
-        // invoice: customer.subscriptions[existingSubscriptionIndex].invoice, // Retain the existing invoice array
+    if (existingSubscription) {
+      // Update existing subscription fields
+      existingSubscription.subscription = {
+        ...existingSubscription.subscription, // Keep existing data
+        ...updatedSubscriptionData, // Overwrite with new data
       };
+
+      // Save the updated subscription
+      await existingSubscription.save();
+
       console.log(
-        `Updated existing subscription at index ${existingSubscriptionIndex}.`
+        `Updated existing subscription for ${stripeId}:`,
+        existingSubscription
       );
     } else {
       // Add a new subscription if it doesn't exist
-      await Subscription.create({ stripeId, updatedSubscriptionData });
+      await Subscription.create({
+        stripeId,
+        subscription: updatedSubscriptionData,
+      });
       console.log("Added new subscription to the customer.", subscriptions);
     }
 
@@ -390,34 +396,34 @@ export const testingDB = async () => {
   //   return;
   const stripeId = "cus_RfSUBddWeaaOjd";
   const dummySubscriptionData1 = {
-    subscriptionId: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
-    cancel_at: new Date(2738043202 * 1000),
-    cancel_at_period_end: false,
-    canceled_at: new Date(2738043202 * 1000),
-    created: new Date(2738043202 * 1000),
-    current_period_end: new Date(1738043150 * 1000),
-    current_period_start: new Date(2738043202 * 1000),
+    subscriptionId: "sub_3Qm7ZLFRpxCUo2PAwMhYaZXX",
+    cancel_at: new Date(1625707230 * 1000),
+    cancel_at_period_end: true,
+    canceled_at: new Date(1625707230 * 1000),
+    created: new Date(1625707230 * 1000),
+    current_period_end: new Date(1731043150 * 1000),
+    current_period_start: new Date(1625707230 * 1000),
     ended_at: null,
   };
 
   //   console.log("Testing subscription update with data:", dummySubscriptionData1);
 
   await handleCustomerSubscriptionUpdated(stripeId, dummySubscriptionData1);
-  const invoiceCustomer = "cus_RfSUBddWeaaOjd";
-  const invoiceData = {
-    invoice_id: "in_1QiCozDPA0JjYlhgoYS3xxtQ",
-    amount_due: 999,
-    amount_paid: 999,
-    currency: "usd",
-    customer: "cus_RfSUBddWeaaOjd",
-    period: {
-      start: new Date(1738043102 * 1000), // Convert from Unix timestamp
-      end: new Date(1738043120 * 1000),
-    },
-    subscription: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
-  };
-  const customerEmail = "newdedara12345refrencing@mailinator.com";
-  await handleInvoice(invoiceCustomer, customerEmail, invoiceData);
+  // const invoiceCustomer = "cus_RfSUBddWeaaOjd";
+  // const invoiceData = {
+  //   invoice_id: "in_1QiCozDPA0JjYlhgoYS3xxtQ",
+  //   amount_due: 999,
+  //   amount_paid: 999,
+  //   currency: "usd",
+  //   customer: "cus_RfSUBddWeaaOjd",
+  //   period: {
+  //     start: new Date(1738043102 * 1000), // Convert from Unix timestamp
+  //     end: new Date(1738043120 * 1000),
+  //   },
+  //   subscription: "sub_1Qm7ZLFRpxCUo2PAwMhYaZXX",
+  // };
+  // const customerEmail = "newdedara12345refrencing@mailinator.com";
+  // await handleInvoice(invoiceCustomer, customerEmail, invoiceData);
 
   // Reload the customer to check updated data
   //   const updatedCustomer = await Customer.findById(customer._id);
