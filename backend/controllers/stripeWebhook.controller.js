@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import Customer from "../models/customer.models.js";
 import User from "../models/user.models.js";
 import userData from "../models/userData.models.js";
+import Subscription from "../models/subscription.models.js";
 // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const stripe = new Stripe(
   "sk_test_51QkKNSFRpxCUo2PABo52EiZ1cCFV3wl5JZLRqnbqfGJOrfMi4KZ21ijcQpWbrsxM3aKSwxHOz3elWWMRVjijsMdb00IUrffgj2"
@@ -192,234 +193,247 @@ async function getSubscriptionsByCustomer(customerId) {
   return subscriptions.data;
 }
 
-// export const handleInvoice = async (
-//   stripeId,
-//   customerEmail,
-//   priceId,
-//   invoiceData
-// ) => {
-//   try {
-//     if (!stripeId || !invoiceData) {
-//       throw new Error("Missing stripeId or invoiceData.");
-//     }
+  export const handleInvoice = async (
+    stripeId,
+    customerEmail,
+    priceId,
+    invoiceData
+  ) => {
+    try {
+      if (!stripeId || !invoiceData) {
+        throw new Error("Missing stripeId or invoiceData.");
+      }
 
-//     // Find the customer in the database by Stripe ID
-//     let customer = await Customer.findOne({ stripeId });
-//     let user = await User.findOne({ email: customerEmail });
-//     const findUserData = await userData.findOne({ email: customerEmail });
-//     console.log("Invoice data received:", invoiceData);
+      // Find the customer in the database by Stripe ID
+      let customer = await Customer.findOne({ stripeId });
+      let user = await User.findOne({ email: customerEmail });
+      const findUserData = await userData.findOne({ email: customerEmail });
+      console.log("Invoice data received:", invoiceData);
 
-//     if (!customer || !user) {
-//       console.warn(
-//         `Customer or user not found for stripeId ${stripeId} or customerEmail ${customerEmail}.`
-//       );
-//       return;
-//     }
+      if (!customer || !user) {
+        console.warn(
+          `Customer or user not found for stripeId ${stripeId} or customerEmail ${customerEmail}.`
+        );
+        return;
+      }
 
-//     // Retry mechanism to find the existing subscription by subscriptionId
-//     const existingSubscriptionIndex = await retryWithExponentialBackoff(
-//       async () => {
-//         const index = customer.subscriptions.findIndex(
-//           (sub) => sub.subscriptionId === invoiceData.subscription
-//         );
+      // Retry mechanism to find the existing subscription by subscriptionId
+      const existingSubscriptionIndex = await retryWithExponentialBackoff(
+        async () => {
+          const index = customer.subscriptions.findIndex(
+            (sub) => sub.subscriptionId === invoiceData.subscription
+          );
 
-//         if (index === -1) {
-//           throw new Error("Subscription not found. Retrying....");
-//         }
+          if (index === -1) {
+            throw new Error("Subscription not found. Retrying....");
+          }
 
-//         return index;
-//       }
-//     );
+          return index;
+        }
+      );
 
-//     const currentSubscription = customer.subscriptions.find(
-//       (sub) => sub.subscriptionId === invoiceData.subscription
-//     );
+      const currentSubscription = customer.subscriptions.find(
+        (sub) => sub.subscriptionId === invoiceData.subscription
+      );
 
-//     const customerSubscriptions = await getSubscriptionsByCustomer(stripeId);
+      const customerSubscriptions = await getSubscriptionsByCustomer(stripeId);
 
-//     // const fetchSubscriptions = customerSubscriptions.map((subscriptionData) => {
-//     //   // console.log("subscriptionData111111111", subscriptionData);
-//     //   if (subscriptionData.id !== currentSubscription.subscriptionId) {
-//     //     // console.log("fetch0000Data123", subscriptionData.id);
-//     //     const subscriptionId = subscriptionData.id;
-//     //     return subscriptionId;
-//     //   }
-//     // });
+      // const fetchSubscriptions = customerSubscriptions.map((subscriptionData) => {
+      //   // console.log("subscriptionData111111111", subscriptionData);
+      //   if (subscriptionData.id !== currentSubscription.subscriptionId) {
+      //     // console.log("fetch0000Data123", subscriptionData.id);
+      //     const subscriptionId = subscriptionData.id;
+      //     return subscriptionId;
+      //   }
+      // });
 
-//     const fetchSubscriptions = customerSubscriptions
-//       .filter((sub) => sub.id !== currentSubscription.subscriptionId)
-//       .map((sub) => sub.id);
+      const fetchSubscriptions = customerSubscriptions
+        .filter((sub) => sub.id !== currentSubscription.subscriptionId)
+        .map((sub) => sub.id);
 
-//     await Promise.all(
-//       fetchSubscriptions.map((subscriptionId) =>
-//         stripe.subscriptions.update(subscriptionId, {
-//           cancel_at_period_end: true,
-//         })
-//       )
-//     );
+      await Promise.all(
+        fetchSubscriptions.map((subscriptionId) =>
+          stripe.subscriptions.update(subscriptionId, {
+            cancel_at_period_end: true,
+          })
+        )
+      );
 
-//     const againcustomerSubscriptions = await getSubscriptionsByCustomer(
-//       stripeId
-//     );
-//     let customerInDb = await Customer.findOne({
-//       stripeId,
-//     });
-//     if (!customerInDb) {
-//       console.error("Customer not found!");
-//       return;
-//     }
+      const againcustomerSubscriptions = await getSubscriptionsByCustomer(
+        stripeId
+      );
+      let customerInDb = await Customer.findOne({
+        stripeId,
+      });
+      if (!customerInDb) {
+        console.error("Customer not found!");
+        return;
+      }
 
-//     // Loop through customer subscriptions and update the necessary fields
-//     customerInDb.subscriptions.map((subscription, index) => {
-//       const foundSubData = againcustomerSubscriptions.find(
-//         (custSubData) => custSubData.id === subscription.subscriptionId
-//       );
+      // Loop through customer subscriptions and update the necessary fields
+      customerInDb.subscriptions.map((subscription, index) => {
+        const foundSubData = againcustomerSubscriptions.find(
+          (custSubData) => custSubData.id === subscription.subscriptionId
+        );
 
-//       if (!foundSubData) {
-//         console.warn(
-//           `No matching subscription found for subscriptionId: ${subscription.subscriptionId}`
-//         );
-//         return; // Skip iteration if no match is found
-//       }
+        if (!foundSubData) {
+          console.warn(
+            `No matching subscription found for subscriptionId: ${subscription.subscriptionId}`
+          );
+          return; // Skip iteration if no match is found
+        }
 
-//       customerInDb.set(`subscriptions.${index}`, {
-//         ...subscription,
-//         cancel_at: foundSubData.cancel_at
-//           ? new Date(foundSubData.cancel_at * 1000)
-//           : null,
-//         cancel_at_period_end: foundSubData.cancel_at_period_end,
-//         canceled_at: foundSubData.canceled_at
-//           ? new Date(foundSubData.canceled_at * 1000)
-//           : null,
-//       });
-//     });
+        customerInDb.set(`subscriptions.${index}`, {
+          ...subscription,
+          cancel_at: foundSubData.cancel_at
+            ? new Date(foundSubData.cancel_at * 1000)
+            : null,
+          cancel_at_period_end: foundSubData.cancel_at_period_end,
+          canceled_at: foundSubData.canceled_at
+            ? new Date(foundSubData.canceled_at * 1000)
+            : null,
+        });
+      });
 
-//     // Save only once after all updates
-//     await customerInDb.save();
+      // Save only once after all updates
+      await customerInDb.save();
 
-//     let currentSubscriptionIndex = -1;
-//     if (currentSubscription.invoice) {
-//       currentSubscriptionIndex = currentSubscription.invoice.findIndex(
-//         (invoice) => invoice.invoice_id === invoiceData.invoice_id
-//       );
-//     }
+      let currentSubscriptionIndex = -1;
+      if (currentSubscription.invoice) {
+        currentSubscriptionIndex = currentSubscription.invoice.findIndex(
+          (invoice) => invoice.invoice_id === invoiceData.invoice_id
+        );
+      }
 
-//     if (currentSubscriptionIndex !== -1) {
-//       customer.subscriptions[existingSubscriptionIndex].invoice[
-//         currentSubscriptionIndex
-//       ] = invoiceData;
-//       console.log("Updated existing invoice.");
-//     } else {
-//       customer.subscriptions[existingSubscriptionIndex].invoice.push(
-//         invoiceData
-//       );
-//       console.log("Pushed new invoice to the array.");
-//     }
+      if (currentSubscriptionIndex !== -1) {
+        customer.subscriptions[existingSubscriptionIndex].invoice[
+          currentSubscriptionIndex
+        ] = invoiceData;
+        console.log("Updated existing invoice.");
+      } else {
+        customer.subscriptions[existingSubscriptionIndex].invoice.push(
+          invoiceData
+        );
+        console.log("Pushed new invoice to the array.");
+      }
 
-//     let credits;
-//     switch (priceId) {
-//       case "price_1QkKUWFRpxCUo2PA0IBMb8Tk":
-//         credits = 1000;
-//         break;
-//       case "price_1QmYTXFRpxCUo2PAFt5uOEWY":
-//         credits = 10000;
-//         break;
+      let credits;
+      switch (priceId) {
+        case "price_1QkKUWFRpxCUo2PA0IBMb8Tk":
+          credits = 1000;
+          break;
+        case "price_1QmYTXFRpxCUo2PAFt5uOEWY":
+          credits = 10000;
+          break;
 
-//       default:
-//         break;
-//     }
+        default:
+          break;
+      }
 
-//     if (!findUserData) {
-//       console.log("user data not found. creating new user...");
-//       await userData.create({
-//         email: customerEmail,
-//         credits: credits,
-//         isPro: true,
-//         priceId: priceId,
-//         period: {
-//           start: invoiceData.period.start, // Convert from Unix timestamp
-//           end: invoiceData.period.end,
-//         },
-//       });
-//     } else {
-//       await userData.updateOne(
-//         { email: customerEmail },
-//         {
-//           credits: credits,
-//           isPro: true,
-//           priceId: priceId,
-//           period: {
-//             start: invoiceData.period.start, // Convert from Unix timestamp
-//             end: invoiceData.period.end,
-//           },
-//         }
-//       );
-//     }
+      if (!findUserData) {
+        console.log("user data not found. creating new user...");
+        await userData.create({
+          email: customerEmail,
+          credits: credits,
+          isPro: true,
+          priceId: priceId,
+          period: {
+            start: invoiceData.period.start, // Convert from Unix timestamp
+            end: invoiceData.period.end,
+          },
+        });
+      } else {
+        await userData.updateOne(
+          { email: customerEmail },
+          {
+            credits: credits,
+            isPro: true,
+            priceId: priceId,
+            period: {
+              start: invoiceData.period.start, // Convert from Unix timestamp
+              end: invoiceData.period.end,
+            },
+          }
+        );
+      }
 
-//     // Log the customer subscriptions before saving
-//     console.log(
-//       "Customer subscriptions before save:",
-//       customer.subscriptions[existingSubscriptionIndex]
-//     );
+      // Log the customer subscriptions before saving
+      console.log(
+        "Customer subscriptions before save:",
+        customer.subscriptions[existingSubscriptionIndex]
+      );
 
-//     // Save the updated customer document to the database
-//     await customer.save();
-//     console.log("Customer saved successfully:", customer);
-//   } catch (error) {
-//     console.error("Error handling invoice update:", error.message);
-//     console.error("Stack trace:", error.stack);
-//   }
-// };
+      // Save the updated customer document to the database
+      await customer.save();
+      console.log("Customer saved successfully:", customer);
+    } catch (error) {
+      console.error("Error handling invoice update:", error.message);
+      console.error("Stack trace:", error.stack);
+    }
+  };
 
 export const handleCustomerSubscriptionUpdated = async (
   stripeId,
   updatedSubscriptionData
 ) => {
   try {
+    console.log("updatedSubscriptionData", updatedSubscriptionData);
+
     if (!stripeId || !updatedSubscriptionData) {
       throw new Error("Missing stripeId or updatedSubscriptionData.");
     }
-    console.log("navigatea", updatedSubscriptionData);
 
-    // Retry mechanism to ensure subscription data is available
-    const customer = await retryWithExponentialBackoff(async () => {
-      const customer = await Customer.findOne({ stripeId });
-      if (!customer) {
-        throw new Error("Customer not found. Retrying...");
-      }
-      return customer;
-    });
+    // Find the subscription document for this customer
+    let existingSubscriptionDoc = await Subscription.findOne({ stripeId });
+    console.log("existingSubscriptionDoc", existingSubscriptionDoc);
 
-    if (!customer) {
-      console.warn(`Customer not found for Stripe ID: ${stripeId}`);
-      // Handle retry logic or temporary storage for missing customers here if needed
+    if (!existingSubscriptionDoc) {
+      console.log("enter !existingSubscriptionDoc block");
+
+      // If no document exists, create a new one with subscriptions as an array
+      await Subscription.create({
+        stripeId,
+        subscriptions: [updatedSubscriptionData], // Store subscriptions in an array
+      });
+
+      console.log("Created new subscription document for the customer.");
       return;
     }
 
-    // Find the existing subscription by subscriptionId
-    const existingSubscriptionIndex = customer.subscriptions.findIndex(
-      (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
-    );
-
-    if (existingSubscriptionIndex !== -1) {
-      // Update the existing subscription
-      customer.subscriptions[existingSubscriptionIndex] = {
-        ...customer.subscriptions[existingSubscriptionIndex],
-        ...updatedSubscriptionData,
-        invoice:
-          customer.subscriptions[existingSubscriptionIndex].invoice || [], // Retain the existing invoice array
-      };
-      console.log(
-        `Updated existing subscription at index ${existingSubscriptionIndex}.`
-      );
-    } else {
-      // Add a new subscription if it doesn't exist
-      customer.subscriptions.push({ ...updatedSubscriptionData, invoice: [] });
-      console.log("Added new subscription to the customer.");
+    // Ensure subscriptions field is an array
+    if (!Array.isArray(existingSubscriptionDoc.subscriptions)) {
+      existingSubscriptionDoc.subscriptions =
+        existingSubscriptionDoc.subscriptions
+          ? [existingSubscriptionDoc.subscriptions] // Convert existing object to array
+          : [];
     }
 
-    // Save the updated customer document to the database
-    await customer.save();
+    // Find if the subscription already exists within the array
+    let existingSubscriptionIndex =
+      existingSubscriptionDoc.subscriptions.findIndex(
+        (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
+      );
+
+    if (existingSubscriptionIndex !== -1) {
+      // Update the existing subscription in the array
+      existingSubscriptionDoc.subscriptions[existingSubscriptionIndex] = {
+        ...existingSubscriptionDoc.subscriptions[existingSubscriptionIndex],
+        ...updatedSubscriptionData,
+      };
+
+      console.log(
+        `Updated existing subscription for ${stripeId}:`,
+        existingSubscriptionDoc.subscriptions[existingSubscriptionIndex]
+      );
+    } else {
+      // If subscription doesn't exist, add it to the subscriptions array
+      existingSubscriptionDoc.subscriptions.push(updatedSubscriptionData);
+      console.log("Added new subscription to existing customer.");
+    }
+
+    // Save the updated document
+    await existingSubscriptionDoc.save();
+    console.log("Customer subscription updated successfully.");
   } catch (error) {
     console.error(
       "Error handling customer subscription update:",
@@ -440,6 +454,7 @@ export const handleCheckoutSessionCompleted = async (userId, session) => {
 
     // Check if the user already exists in the database
     const customer = await Customer.findById(userId);
+    console.log("customer", customer);
 
     if (customer) {
       // If the user exists, update their data
@@ -513,9 +528,7 @@ export const getRealtimeData = async (request, response) => {
     case "checkout.session.completed":
       const session = event.data.object;
       userId = session.metadata.userId; // Get userId from metadata
-      console.log("userIduserIduserIduserId", userId);
 
-      console.log("Checkout session completed:", session);
       await handleCheckoutSessionCompleted(userId, session);
       break;
     case "customer.subscription.created":

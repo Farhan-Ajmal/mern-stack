@@ -30,11 +30,12 @@ export const subscribeUser = async (req, res) => {
     let customer;
     let customer_id;
     customer = await stripe.customers.list({
-      email: "example@mailinator.com",
+      email: "example3@mailinator.com",
     });
+
     if (customer.data.length === 0) {
       customer = await stripe.customers.create({
-        email: "example@mailinator.com",
+        email: "example3@mailinator.com",
       });
       customer_id = customer.id;
     } else {
@@ -51,11 +52,11 @@ export const subscribeUser = async (req, res) => {
       ],
       success_url: `http://localhost:5001/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `http://localhost:5001/cancel`,
-      // customer_email: "example@mailinator.com",
+      // customer_email: "example3@mailinator.com",
       customer: customer_id,
       metadata: {
-        userEmail: "example@mailinator.com",
-        userId: "example12345", // Store the logged-in user's ID
+        userEmail: "example3@mailinator.com",
+        userId: "example32345", // Store the logged-in user's ID
       },
     });
     res.status(200).json({ success: true, url: session.url }); // Send the Stripe Checkout URL as a response
