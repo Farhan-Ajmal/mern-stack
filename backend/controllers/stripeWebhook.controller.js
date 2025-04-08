@@ -374,27 +374,67 @@ async function getSubscriptionsByCustomer(customerId) {
 //   }
 // };
 
-export const handleInvoice = async (invoiceData) => {
+export const handleInvoice = async (customer, invoiceData) => {
   try {
+    let existingInvoice = await Invoice.findOne({ customer });
     // Check if invoice already exists
-    const existingInvoice = await Invoice.findOne({
-      invoice_id: invoiceData.invoice_id,
-    });
+    // const existingInvoice = await Invoice.findOne({
+    //   invoice_id: invoiceData.invoice_id,
+    // });
 
-    if (existingInvoice) {
-      console.log(`Invoice ${invoiceData.invoice_id} already exists.`);
-      return;
-    }
+    // if (existingInvoice) {
+    //   console.log(`Invoice ${invoiceData.invoice_id} already exists.`);
+    //   return;
+    // }
 
     // Create a new invoice entry
-    const newInvoice = new Invoice(invoiceData);
-    await newInvoice.save();
+    // const newInvoice = new Invoice(invoiceData);
+    // await newInvoice.save();
+    if (!existingInvoice) {
+      const newInvoice = new Invoice({
+        customer,
+        invoices: [invoiceData],
+      });
 
-    console.log("Invoice stored successfully:", newInvoice);
+      await newInvoice.save(); // Explicit save
+
+      return;
+    } else {
+      existingInvoice.invoices.push(invoiceData);
+    }
+    await existingInvoice.save();
+    // console.log("Invoice stored successfully:", newInvoice);
   } catch (error) {
     console.error("Error storing invoice:", error.message);
   }
 };
+
+const getCustomerWithSubscriptions = async (customerEmail) => {
+  try {
+    // Find customer by email
+    const customer = await Customer.findOne({ email: customerEmail });
+    if (!customer) {
+      console.log("Customer not found");
+      return null;
+    }
+
+    // Find subscriptions matching the customer's stripeId
+    const subscription = await Subscription.findOne({
+      stripeId: customer.stripeId,
+    });
+
+    // Merge customer and subscription data
+    return {
+      ...customer.toObject(),
+      subscriptions: subscription ? subscription.subscriptions : [],
+    };
+  } catch (error) {
+    console.error("Error fetching customer and subscriptions:", error);
+  }
+};
+
+// Example Usage
+getCustomerWithSubscriptions("example5@mailinator.com").then(console.log);
 
 export const handleCustomerSubscriptionUpdated = async (
   stripeId,
@@ -626,6 +666,7 @@ export const getRealtimeData = async (request, response) => {
       console.log("invoiceData1", invoiceData1);
 
       const invoiceData = {
+        // customer: invoice.customer,
         invoice_id: invoice.id,
         amount_due: invoice.amount_due,
         amount_paid: invoice.amount_paid,
@@ -639,12 +680,7 @@ export const getRealtimeData = async (request, response) => {
       };
 
       const priceId = invoice.lines.data[0].plan.id;
-      handleInvoice(
-        // invoice.customer,
-        // invoice.customer_email,
-        // priceId,
-        invoiceData
-      );
+      handleInvoice(invoice.customer, invoiceData);
 
       break;
 
@@ -654,7 +690,7 @@ export const getRealtimeData = async (request, response) => {
 
     case "payment_intent.succeeded":
       const paymentIntent = event.data.object;
-      console.log(`PaymentIntent   succeeded: ${paymentIntent.id}`);
+      console.log(`PaymentIntent succeeded: ${paymentIntent.id}`);
 
       break;
 
