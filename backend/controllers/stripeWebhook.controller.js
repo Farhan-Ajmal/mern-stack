@@ -373,7 +373,8 @@ async function getSubscriptionsByCustomer(customerId) {
 //     console.error("Stack trace:", error.stack);
 //   }
 // };
-
+let createdUser;
+const firebaseUID = "firebase_user_123"; // 👈 custom _id
 export const handleInvoice = async (customer, invoiceData) => {
   try {
     let existingInvoice = await Invoice.findOne({ customer });
@@ -434,14 +435,51 @@ const getCustomerWithSubscriptions = async (customerEmail) => {
 };
 
 // Example Usage
-getCustomerWithSubscriptions("example5@mailinator.com").then(console.log);
+getCustomerWithSubscriptions("example7@mailinator.com").then(console.log);
 
+export const handleCheckoutSessionCompleted = async (userId, session) => {
+  try {
+    const stripeId = session.customer; // Stripe customer ID
+    const email = session.metadata.userEmail; // Customer's email from Stripe
+
+    if (!userId || !stripeId || !email) {
+      throw new Error("Missing required session metadata or customer details.");
+    }
+
+    // Check if the user already exists in the database
+    const customer = await Customer.findById(userId);
+    console.log("customer", customer);
+
+    if (customer) {
+      // If the user exists, update their data
+      customer.email = email;
+      customer.stripeId = stripeId;
+      console.log(`Customer updated for userId: ${userId}`);
+    } else {
+      // If the user doesn't exist, create a new document
+      console.log(`Creating new customer for userId: ${userId}`);
+      createdUser = await Customer.create({
+        _id: firebaseUID,
+        email,
+        stripeId,
+      });
+      console.log("createdUser", createdUser);
+    }
+
+    // Save changes to the database
+    await customer?.save();
+    console.log("Customer saved successfully.");
+  } catch (error) {
+    console.error("Error handling checkout session completed:", error.message);
+  }
+};
 export const handleCustomerSubscriptionUpdated = async (
   stripeId,
   updatedSubscriptionData
 ) => {
   try {
-    console.log("updatedSubscriptionData", updatedSubscriptionData);
+    // const customer = await Customer.findOne({ stripeId });
+    console.log("customer dound", createdUser);
 
     if (!stripeId || !updatedSubscriptionData) {
       throw new Error("Missing stripeId or updatedSubscriptionData.");
@@ -456,6 +494,7 @@ export const handleCustomerSubscriptionUpdated = async (
 
       // If no document exists, create a new one with subscriptions as an array
       await Subscription.create({
+        user: firebaseUID,
         stripeId,
         subscriptions: [updatedSubscriptionData], // Store subscriptions in an array
       });
@@ -504,42 +543,6 @@ export const handleCustomerSubscriptionUpdated = async (
       error.message
     );
     console.error("Stack trace:", error.stack);
-  }
-};
-
-export const handleCheckoutSessionCompleted = async (userId, session) => {
-  try {
-    const stripeId = session.customer; // Stripe customer ID
-    const email = session.metadata.userEmail; // Customer's email from Stripe
-
-    if (!userId || !stripeId || !email) {
-      throw new Error("Missing required session metadata or customer details.");
-    }
-
-    // Check if the user already exists in the database
-    const customer = await Customer.findById(userId);
-    console.log("customer", customer);
-
-    if (customer) {
-      // If the user exists, update their data
-      customer.email = email;
-      customer.stripeId = stripeId;
-      console.log(`Customer updated for userId: ${userId}`);
-    } else {
-      // If the user doesn't exist, create a new document
-      console.log(`Creating new customer for userId: ${userId}`);
-      await Customer.create({
-        _id: userId,
-        email,
-        stripeId,
-      });
-    }
-
-    // Save changes to the database
-    await customer?.save();
-    console.log("Customer saved successfully.");
-  } catch (error) {
-    console.error("Error handling checkout session completed:", error.message);
   }
 };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
