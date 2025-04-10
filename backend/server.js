@@ -10,6 +10,7 @@ import stripeWebhookRouter from "./routes/stripeWebhook.route.js";
 import userData from "./models/userData.models.js";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
+import Subscription from "./models/subscription.models.js";
 // import Stripe from "stripe";
 
 // Initialize the Stripe instance with your secret key
@@ -102,3 +103,21 @@ app.listen(5001, () => {
 });
 
 // https://www.youtube.com/watch?v=O3BUHwfHf84&t=2359s
+
+app.post("/api/fetchUserData", async () => {
+  const fetchSubData = await Subscription.find({
+    user: "firebase_user_123",
+  }).populate({
+    path: "user",
+    populate: {
+      path: "user", 
+    },
+  });
+  console.log("fetchSubData------>", fetchSubData);
+});
+// app.post("/api/fetchUserData", async () => {
+//   const fetchSubData = await Subscription.find({
+//     user: "firebase_user_123",
+//   }).populate("user");
+//   console.log("fetchSubData------>", fetchSubData);
+// });

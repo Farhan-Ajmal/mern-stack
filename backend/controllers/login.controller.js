@@ -6,7 +6,6 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    console.log("user", user);
 
     const errorMsg = "Auth failed email or password is wrong";
     if (!user) {
@@ -27,7 +26,6 @@ export const login = async (req, res) => {
       process.env.REFRESH_SECRET,
       { expiresIn: "5m" } // Long-lived token
     );
-    console.log("refreshToken", refreshToken);
 
     // Save refresh token in an httpOnly cookie
     res.cookie("refreshToken", refreshToken, {

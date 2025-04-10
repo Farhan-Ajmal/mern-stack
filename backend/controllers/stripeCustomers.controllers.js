@@ -10,7 +10,6 @@ export const getCustomers = async (req, res) => {
   try {
     const customers = await stripe.customers.list({ limit: 10 });
     res.status(200).json({ success: true, data: customers });
-    console.log("Customers:", customers.data);
   } catch (error) {
     res.status(500).json({ success: false, message: error });
     console.error("Error fetching customers:", error);

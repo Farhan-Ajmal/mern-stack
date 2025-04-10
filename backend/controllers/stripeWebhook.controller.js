@@ -393,6 +393,7 @@ export const handleInvoice = async (customer, invoiceData) => {
     // await newInvoice.save();
     if (!existingInvoice) {
       const newInvoice = new Invoice({
+        _id: firebaseUID,
         customer,
         invoices: [invoiceData],
       });
@@ -435,7 +436,7 @@ const getCustomerWithSubscriptions = async (customerEmail) => {
 };
 
 // Example Usage
-getCustomerWithSubscriptions("example7@mailinator.com").then(console.log);
+// getCustomerWithSubscriptions("example7@mailinator.com").then(console.log);
 
 export const handleCheckoutSessionCompleted = async (userId, session) => {
   try {
@@ -458,12 +459,12 @@ export const handleCheckoutSessionCompleted = async (userId, session) => {
     } else {
       // If the user doesn't exist, create a new document
       console.log(`Creating new customer for userId: ${userId}`);
-      createdUser = await Customer.create({
+      await Customer.create({
         _id: firebaseUID,
+        user: firebaseUID,
         email,
         stripeId,
       });
-      console.log("createdUser", createdUser);
     }
 
     // Save changes to the database
@@ -495,6 +496,7 @@ export const handleCustomerSubscriptionUpdated = async (
       // If no document exists, create a new one with subscriptions as an array
       await Subscription.create({
         user: firebaseUID,
+        // _id: firebaseUID,
         stripeId,
         subscriptions: [updatedSubscriptionData], // Store subscriptions in an array
       });

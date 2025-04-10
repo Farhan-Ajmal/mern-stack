@@ -2,7 +2,9 @@ import mongoose, { Schema } from "mongoose";
 
 const customerSchema = new mongoose.Schema(
   {
-    _id: { type: String, required: true }, // Use `userId` as the document ID 
+    _id: { type: String, required: true }, // Use `userId` as the document ID
+    user: { type: String, ref: "Invoice" }, // Important!
+
     email: { type: String, required: true },
     stripeId: { type: String, required: true },
     // subscriptions: [{ type: Schema.Types.ObjectId, ref: "Subscription" }], // Array of subscription objects
