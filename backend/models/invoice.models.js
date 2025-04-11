@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const invoiceSchema = new mongoose.Schema({
-  // user: { type: String, ref: "Subscription" },
-  _id: { type: String, required: true },
+  customers: { type: String, ref: "Customer", required: true },
+
   customer: { type: String, required: true },
   invoices: [
     {

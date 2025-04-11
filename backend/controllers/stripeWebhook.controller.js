@@ -393,7 +393,7 @@ export const handleInvoice = async (customer, invoiceData) => {
     // await newInvoice.save();
     if (!existingInvoice) {
       const newInvoice = new Invoice({
-        _id: firebaseUID,
+        customers: firebaseUID,
         customer,
         invoices: [invoiceData],
       });
@@ -461,7 +461,7 @@ export const handleCheckoutSessionCompleted = async (userId, session) => {
       console.log(`Creating new customer for userId: ${userId}`);
       await Customer.create({
         _id: firebaseUID,
-        user: firebaseUID,
+        // user: firebaseUID,
         email,
         stripeId,
       });
@@ -495,7 +495,7 @@ export const handleCustomerSubscriptionUpdated = async (
 
       // If no document exists, create a new one with subscriptions as an array
       await Subscription.create({
-        user: firebaseUID,
+        customers: firebaseUID,
         // _id: firebaseUID,
         stripeId,
         subscriptions: [updatedSubscriptionData], // Store subscriptions in an array

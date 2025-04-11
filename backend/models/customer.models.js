@@ -1,17 +1,29 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 
-const customerSchema = new mongoose.Schema(
+const CustomerSchema = new mongoose.Schema(
   {
-    _id: { type: String, required: true }, // Use `userId` as the document ID
-    user: { type: String, ref: "Invoice" }, // Important!
-
-    email: { type: String, required: true },
-    stripeId: { type: String, required: true },
-    // subscriptions: [{ type: Schema.Types.ObjectId, ref: "Subscription" }], // Array of subscription objects
+    _id: String, // or whatever your ID is (e.g., Firebase UID)
+    email: String,
+    stripeId: String,
   },
-  { timestamps: true } // Adds `createdAt` and `updatedAt` fields
+  { timestamps: true }
 );
 
-const Customer = mongoose.model("Customer", customerSchema);
+CustomerSchema.virtual("subscriptions", {
+  ref: "Subscription",
+  localField: "_id",
+  foreignField: "customers", // this is the field in Subscription that refers to customer
+});
+
+CustomerSchema.virtual("invoices", {
+  ref: "Invoice",
+  localField: "_id",
+  foreignField: "customers", // again, referencing the same field in Invoice
+});
+
+CustomerSchema.set("toObject", { virtuals: true });
+CustomerSchema.set("toJSON", { virtuals: true });
+
+const Customer = mongoose.model("Customer", CustomerSchema);
 
 export default Customer;
