@@ -1,9 +1,13 @@
 import mongoose from "mongoose";
 
 const invoiceSchema = new mongoose.Schema({
-  customers: { type: String, ref: "Customer", required: true },
+  _id: { type: String, required: true }, // Use `userId` as the document ID
 
-  customer: { type: String, required: true },
+  customer: { type: String, ref: "Customer", required: true },
+
+  subscription: { type: String, ref: "Subscription", required: true },
+
+  customerId: { type: String, required: true },
   invoices: [
     {
       invoice_id: { type: String, required: true }, // Unique identifier for each invoice

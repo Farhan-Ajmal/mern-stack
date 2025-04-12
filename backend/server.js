@@ -107,27 +107,24 @@ app.listen(5001, () => {
 // https://www.youtube.com/watch?v=O3BUHwfHf84&t=2359s
 
 app.post("/api/fetchUserData", async (req, res) => {
-  // const fetchSubData = await Subscription.findOne({
-  //   user: "firebase_user_123",
-  // }).populate({
-  //   path: "user",
-  // });
-
-  // const invoicesData = await Invoice.findOne({
-  //   userInvoice: "firebase_user_123",
-  // });
-
-  // console.log("fetchSubData------>", fetchSubData);
-  // console.log("invoicesData------>", invoicesData);
-
   // Fetch Customer with populated subscriptions and invoices
-  const customerData = await Customer.findOne({ _id: "firebase_user_123" })
-    .populate("subscriptions")
-    .populate("invoices")
-    .lean()
-    .exec();
+  try {
+    const customerData = await Customer.findOne({
+      _id: "firebase_customer_123",
+    }).populate({
+      path: "subscription", // populate blogs
+      populate: {
+        path: "invoice", // in blogs, populate comments
+      },
+    });
+    console.log("customerData", JSON.stringify(customerData));
+    console.log(JSON.stringify(customerData, null, 2));
 
-  res.json(customerData);
+  } catch (error) {
+    console.log("error in fetchUserData", error);
+  }
+
+  // res.json(customerData);
 });
 // app.post("/api/fetchUserData", async () => {
 //   const fetchSubData = await Subscription.find({

@@ -1,6 +1,8 @@
 import mongoose, { Schema } from "mongoose";
 
 const subscriptionSchema = new mongoose.Schema({
+  _id: { type: String, required: true },
+  customer: { type: String, ref: "Customer" },
   stripeId: { type: String, required: true }, // Unique identifier for each subscription
   subscriptions: [
     {
@@ -16,6 +18,7 @@ const subscriptionSchema = new mongoose.Schema({
       ended_at: { type: Date, default: null }, // Subscription status (e.g., active, canceled)
     },
   ],
+  invoice: { type: String, ref: "Invoice" },
 });
 
 const Subscription = mongoose.model("Subscription", subscriptionSchema);

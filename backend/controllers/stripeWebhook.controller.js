@@ -374,27 +374,19 @@ async function getSubscriptionsByCustomer(customerId) {
 //   }
 // };
 let createdUser;
+const firebaseUID1 = "firebase_customer_123"; // 👈 custom _id
 const firebaseUID = "firebase_user_123"; // 👈 custom _id
-export const handleInvoice = async (customer, invoiceData) => {
+const firebaseUID2 = "firebase_invoice_123"; // 👈 custom _id
+export const handleInvoice = async (customerId, invoiceData) => {
   try {
-    let existingInvoice = await Invoice.findOne({ customer });
-    // Check if invoice already exists
-    // const existingInvoice = await Invoice.findOne({
-    //   invoice_id: invoiceData.invoice_id,
-    // });
+    let existingInvoice = await Invoice.findOne({ customerId });
 
-    // if (existingInvoice) {
-    //   console.log(`Invoice ${invoiceData.invoice_id} already exists.`);
-    //   return;
-    // }
-
-    // Create a new invoice entry
-    // const newInvoice = new Invoice(invoiceData);
-    // await newInvoice.save();
     if (!existingInvoice) {
       const newInvoice = new Invoice({
-        customers: firebaseUID,
-        customer,
+        _id: firebaseUID2,
+        customer: firebaseUID1,
+        subscription: firebaseUID,
+        customerId,
         invoices: [invoiceData],
       });
 
@@ -460,10 +452,11 @@ export const handleCheckoutSessionCompleted = async (userId, session) => {
       // If the user doesn't exist, create a new document
       console.log(`Creating new customer for userId: ${userId}`);
       await Customer.create({
-        _id: firebaseUID,
+        _id: firebaseUID1,
         // user: firebaseUID,
         email,
         stripeId,
+        subscription: firebaseUID,
       });
     }
 
@@ -495,10 +488,12 @@ export const handleCustomerSubscriptionUpdated = async (
 
       // If no document exists, create a new one with subscriptions as an array
       await Subscription.create({
-        customers: firebaseUID,
-        // _id: firebaseUID,
+        _id: firebaseUID,
+        customer: firebaseUID1,
+
         stripeId,
         subscriptions: [updatedSubscriptionData], // Store subscriptions in an array
+        invoice: firebaseUID2,
       });
 
       console.log("Created new subscription document for the customer.");
