@@ -384,8 +384,8 @@ export const handleInvoice = async (customerId, invoiceData) => {
     if (!existingInvoice) {
       const newInvoice = new Invoice({
         _id: firebaseUID2,
-        customer: firebaseUID1,
-        subscription: firebaseUID,
+        // customer: firebaseUID1,
+        // subscription: firebaseUID,
         customerId,
         invoices: [invoiceData],
       });
@@ -489,7 +489,7 @@ export const handleCustomerSubscriptionUpdated = async (
       // If no document exists, create a new one with subscriptions as an array
       await Subscription.create({
         _id: firebaseUID,
-        customer: firebaseUID1,
+        // customer: firebaseUID1,
 
         stripeId,
         subscriptions: [updatedSubscriptionData], // Store subscriptions in an array

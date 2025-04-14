@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 
 const subscriptionSchema = new mongoose.Schema({
   _id: { type: String, required: true },
-  customer: { type: String, ref: "Customer" },
+  // customer: { type: String, ref: "Customer" },
   stripeId: { type: String, required: true }, // Unique identifier for each subscription
   subscriptions: [
     {

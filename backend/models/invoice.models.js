@@ -3,9 +3,9 @@ import mongoose from "mongoose";
 const invoiceSchema = new mongoose.Schema({
   _id: { type: String, required: true }, // Use `userId` as the document ID
 
-  customer: { type: String, ref: "Customer", required: true },
+  // customer: { type: String, ref: "Customer", required: true },
 
-  subscription: { type: String, ref: "Subscription", required: true },
+  // subscription: { type: String, ref: "Subscription", required: true },
 
   customerId: { type: String, required: true },
   invoices: [

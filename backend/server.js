@@ -119,7 +119,7 @@ app.post("/api/fetchUserData", async (req, res) => {
     });
     console.log("customerData", JSON.stringify(customerData));
     console.log(JSON.stringify(customerData, null, 2));
-
+    return res.json(customerData);
   } catch (error) {
     console.log("error in fetchUserData", error);
   }
