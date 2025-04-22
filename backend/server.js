@@ -13,10 +13,14 @@ import jwt from "jsonwebtoken";
 import Subscription from "./models/subscription.models.js";
 import Invoice from "./models/invoice.models.js";
 import Customer from "./models/customer.models.js";
+import Stripe from "stripe";
 // import Stripe from "stripe";
 
 // Initialize the Stripe instance with your secret key
 // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(
+  "sk_test_51QkKNSFRpxCUo2PABo52EiZ1cCFV3wl5JZLRqnbqfGJOrfMi4KZ21ijcQpWbrsxM3aKSwxHOz3elWWMRVjijsMdb00IUrffgj2"
+);
 // const express = require("express");
 // const cors = require("cors");
 
@@ -110,15 +114,54 @@ app.post("/api/fetchUserData", async (req, res) => {
   // Fetch Customer with populated subscriptions and invoices
   try {
     const customerData = await Customer.findOne({
-      _id: "firebase_customer_123",
+      stripeId: "cus_S68JH5XksfeBhS",
     }).populate({
       path: "subscription", // populate blogs
       populate: {
         path: "invoice", // in blogs, populate comments
       },
     });
-    console.log("customerData", JSON.stringify(customerData));
-    console.log(JSON.stringify(customerData, null, 2));
+
+    const findSubscriptions = await stripe.subscriptions.list({
+      customer: "cus_S68JH5XksfeBhS",
+    });
+    const subscriptionIds = findSubscriptions.data.map((subscription) => {
+      return subscription.id;
+    });
+    // const
+    console.log("subscriptionIds", subscriptionIds);
+    return;
+    const subscriptionData = findSubscriptions.subscriptions;
+
+    subscriptionData.map(async (subscription, index) => {
+      console.log("subscr", subscription.subscriptionId);
+      await stripe.subscriptions.update(subscription.subscriptionId, {
+        cancel_at_period_end: true,
+      });
+    });
+
+    // Set your secret key. Remember to switch to your live secret key in production.
+    // See your keys here: https://dashboard.stripe.com/apikeys
+
+    const subscription = await stripe.subscriptions.update(
+      "{{SUBSCRIPTION_ID}}",
+      {
+        cancel_at_period_end: true,
+      }
+    );
+
+    const execStats = await Customer.findOne({
+      email: "example8@mailinator.com",
+    })
+      .populate({
+        path: "subscription", // populate blogs
+        populate: {
+          path: "invoice", // in blogs, populate comments
+        },
+      })
+      .explain("executionStats");
+    // console.log("execStats", execStats);
+    // console.log(JSON.stringify(customerData, null, 2));
     return res.json(customerData);
   } catch (error) {
     console.log("error in fetchUserData", error);

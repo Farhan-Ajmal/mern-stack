@@ -374,9 +374,9 @@ async function getSubscriptionsByCustomer(customerId) {
 //   }
 // };
 let createdUser;
-const firebaseUID1 = "firebase_customer_123"; // 👈 custom _id
-const firebaseUID = "firebase_user_123"; // 👈 custom _id
-const firebaseUID2 = "firebase_invoice_123"; // 👈 custom _id
+const firebaseUID1 = "firebase_customer_1123"; // 👈 custom _id
+const firebaseUID = "firebase_user_1123"; // 👈 custom _id
+const firebaseUID2 = "firebase_invoice_1123"; // 👈 custom _id
 export const handleInvoice = async (customerId, invoiceData) => {
   try {
     let existingInvoice = await Invoice.findOne({ customerId });
@@ -428,7 +428,7 @@ const getCustomerWithSubscriptions = async (customerEmail) => {
 };
 
 // Example Usage
-// getCustomerWithSubscriptions("example7@mailinator.com").then(console.log);
+// getCustomerWithSubscriptions("example8@mailinator.com").then(console.log);
 
 export const handleCheckoutSessionCompleted = async (userId, session) => {
   try {
@@ -441,7 +441,7 @@ export const handleCheckoutSessionCompleted = async (userId, session) => {
 
     // Check if the user already exists in the database
     const customer = await Customer.findById(userId);
-    console.log("customer", customer);
+    // console.log("customer", customer);
 
     if (customer) {
       // If the user exists, update their data
@@ -458,6 +458,7 @@ export const handleCheckoutSessionCompleted = async (userId, session) => {
         stripeId,
         subscription: firebaseUID,
       });
+      await Customer.collection.createIndex({ stripeId: 1 });
     }
 
     // Save changes to the database
@@ -472,25 +473,17 @@ export const handleCustomerSubscriptionUpdated = async (
   updatedSubscriptionData
 ) => {
   try {
-    // const customer = await Customer.findOne({ stripeId });
-    console.log("customer dound", createdUser);
-
     if (!stripeId || !updatedSubscriptionData) {
       throw new Error("Missing stripeId or updatedSubscriptionData.");
     }
 
     // Find the subscription document for this customer
     let existingSubscriptionDoc = await Subscription.findOne({ stripeId });
-    console.log("existingSubscriptionDoc", existingSubscriptionDoc);
 
     if (!existingSubscriptionDoc) {
-      console.log("enter !existingSubscriptionDoc block");
-
       // If no document exists, create a new one with subscriptions as an array
       await Subscription.create({
         _id: firebaseUID,
-        // customer: firebaseUID1,
-
         stripeId,
         subscriptions: [updatedSubscriptionData], // Store subscriptions in an array
         invoice: firebaseUID2,
@@ -499,6 +492,28 @@ export const handleCustomerSubscriptionUpdated = async (
       console.log("Created new subscription document for the customer.");
       return;
     }
+    const findSubscriptions = await stripe.subscriptions.list({
+      customer: stripeId,
+      status: "active",
+    });
+
+    const activeSubscriptions = findSubscriptions.data.filter((sub) => {
+      return (
+        sub.cancel_at_period_end === false &&
+        sub.id !== updatedSubscriptionData.subscriptionId
+      );
+    });
+
+    const activeSubIds = activeSubscriptions.map((sub) => {
+      return sub.id;
+    });
+
+    // cancel active subscriptions
+    activeSubIds.map(async (subscriptionId) => {
+      await stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      });
+    });
 
     // Ensure subscriptions field is an array
     if (!Array.isArray(existingSubscriptionDoc.subscriptions)) {
@@ -663,7 +678,6 @@ export const getRealtimeData = async (request, response) => {
     case "invoice.payment_succeeded":
       const invoice = event.data.object;
       const invoiceData1 = JSON.stringify(event.data.object, null, 2);
-      console.log("invoiceData1", invoiceData1);
 
       const invoiceData = {
         // customer: invoice.customer,

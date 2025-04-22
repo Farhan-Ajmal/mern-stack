@@ -4,7 +4,7 @@ const customerSchema = new mongoose.Schema(
   {
     _id: { type: String, required: true }, // Use `userId` as the document ID
 
-    email: { type: String, required: true },
+    email: { type: String, required: true, index: true },
     stripeId: { type: String, required: true },
     subscription: { type: String, ref: "Subscription", required: true },
   },
