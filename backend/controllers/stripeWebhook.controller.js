@@ -373,19 +373,22 @@ async function getSubscriptionsByCustomer(customerId) {
 //     console.error("Stack trace:", error.stack);
 //   }
 // };
-let createdUser;
 const firebaseUID1 = "firebase_customer_1123"; // 👈 custom _id
 const firebaseUID = "firebase_user_1123"; // 👈 custom _id
 const firebaseUID2 = "firebase_invoice_1123"; // 👈 custom _id
-export const handleInvoice = async (customerId, invoiceData) => {
+export const handleInvoice = async (
+  customerId,
+  customerEmail,
+  priceId,
+  invoiceData
+) => {
   try {
     let existingInvoice = await Invoice.findOne({ customerId });
+    const findUserData = await userData.findOne({ email: customerEmail });
 
     if (!existingInvoice) {
       const newInvoice = new Invoice({
         _id: firebaseUID2,
-        // customer: firebaseUID1,
-        // subscription: firebaseUID,
         customerId,
         invoices: [invoiceData],
       });
@@ -398,6 +401,47 @@ export const handleInvoice = async (customerId, invoiceData) => {
     }
     await existingInvoice.save();
     // console.log("Invoice stored successfully:", newInvoice);
+
+    let credits;
+    switch (priceId) {
+      case "price_1QkKUWFRpxCUo2PA0IBMb8Tk":
+        credits = 1000;
+        break;
+      case "price_1QmYTXFRpxCUo2PAFt5uOEWY":
+        credits = 10000;
+        break;
+
+      default:
+        break;
+    }
+
+    if (!findUserData) {
+      console.log("user data not found. creating new user...");
+      await userData.create({
+        customer: customerId,
+        email: customerEmail,
+        credits: credits,
+        isPro: true,
+        priceId: priceId,
+        period: {
+          start: invoiceData.period.start, // Convert from Unix timestamp
+          end: invoiceData.period.end,
+        },
+      });
+    } else {
+      await userData.updateOne(
+        { email: customerEmail },
+        {
+          credits: credits,
+          isPro: true,
+          priceId: priceId,
+          period: {
+            start: invoiceData.period.start, // Convert from Unix timestamp
+            end: invoiceData.period.end,
+          },
+        }
+      );
+    }
   } catch (error) {
     console.error("Error storing invoice:", error.message);
   }
@@ -529,6 +573,8 @@ export const handleCustomerSubscriptionUpdated = async (
         (sub) => sub.subscriptionId === updatedSubscriptionData.subscriptionId
       );
 
+    console.log("existingSubscriptionIndex", existingSubscriptionIndex);
+
     if (existingSubscriptionIndex !== -1) {
       // Update the existing subscription in the array
       existingSubscriptionDoc.subscriptions[existingSubscriptionIndex] = {
@@ -542,7 +588,22 @@ export const handleCustomerSubscriptionUpdated = async (
       );
     } else {
       // If subscription doesn't exist, add it to the subscriptions array
-      existingSubscriptionDoc.subscriptions.push(updatedSubscriptionData);
+      if (!updatedSubscriptionData || !updatedSubscriptionData.subscriptionId) {
+        throw new Error("Invalid subscription data: missing subscriptionId");
+      }
+
+      const filtered = existingSubscriptionDoc.subscriptions.filter(
+        (sub) => sub.subscriptionId !== updatedSubscriptionData.subscriptionId
+      );
+
+      // console.log("filtered", filtered);
+
+      filtered.push(updatedSubscriptionData);
+      existingSubscriptionDoc.subscriptions = filtered;
+
+      //
+
+      // existingSubscriptionDoc.subscriptions.push(updatedSubscriptionData);
       console.log("Added new subscription to existing customer.");
     }
 
@@ -629,7 +690,7 @@ export const getRealtimeData = async (request, response) => {
         canceled_at: subscription.canceled_at
           ? new Date(subscription.canceled_at * 1000)
           : null,
-        created: subscription.created ? new Date(subscription.created) : null,
+        created: new Date(subscription.created * 1000),
         current_period_end: new Date(subscription.current_period_end * 1000),
         current_period_start: new Date(
           subscription.current_period_start * 1000
@@ -667,6 +728,7 @@ export const getRealtimeData = async (request, response) => {
           ? new Date(subscription.ended_at * 1000)
           : null,
       };
+      console.log("it should not be called");
 
       await handleCustomerSubscriptionUpdated(
         subscription.customer,
@@ -678,6 +740,7 @@ export const getRealtimeData = async (request, response) => {
     case "invoice.payment_succeeded":
       const invoice = event.data.object;
       const invoiceData1 = JSON.stringify(event.data.object, null, 2);
+      console.log("invoiceData1", invoiceData1);
 
       const invoiceData = {
         // customer: invoice.customer,
@@ -694,7 +757,12 @@ export const getRealtimeData = async (request, response) => {
       };
 
       const priceId = invoice.lines.data[0].plan.id;
-      handleInvoice(invoice.customer, invoiceData);
+      handleInvoice(
+        invoice.customer,
+        invoice.customer_email,
+        priceId,
+        invoiceData
+      );
 
       break;
 

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const userDataSchema = mongoose.Schema({
+  customer: { type: String },
   email: { type: String },
   credits: {
     type: Number,
